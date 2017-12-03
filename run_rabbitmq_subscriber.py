@@ -17,18 +17,18 @@ log = logging.getLogger(name)
 
 log.info("Start - {}".format(name))
 
-# You can also pass in already-initialized Celery applications too:
-app = Celery()
-sub = Subscriber("rabbitmq-publisher", ev("BROKER_URL", "amqp://rabbitmq:rabbitmq@localhost:5672//"), app)
 
 recv_msgs = []
-
-
 def handle_message(body, message):
     log.info("recv msg props={} body={}".format(message, body))
     recv_msgs.append(body)
     message.ack()
 # end of handle_message
+
+
+# Initialize Celery application
+app = Celery()
+sub = Subscriber("rabbitmq-publisher", ev("BROKER_URL", "amqp://rabbitmq:rabbitmq@localhost:5672//"), app)
 
 
 # Now send:
