@@ -19,6 +19,8 @@ log.info("Start - {}".format(name))
 
 
 recv_msgs = []
+
+
 def handle_message(body, message):
     log.info("recv msg props={} body={}".format(message, body))
     recv_msgs.append(body)
