@@ -54,7 +54,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "celery_connectors"))
 setup(
     name="celery-connectors",
     cmdclass={"build_py": build_py},
-    version="1.0.0",
+    version="1.0.1",
     description="Celery Headless Connectors",
     long_description="For running headless celery subscribers and " +
     "kombu publishers to process json or pickled messages using a " +
