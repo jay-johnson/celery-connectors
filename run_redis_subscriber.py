@@ -37,8 +37,7 @@ sub = Subscriber("redis-subscriber",
                  ssl_options)
 
 
-# Now send:
-msg = {"account_id": 123}
+# Now consume:
 dst_queue = "reporting.accounts"
 sub.consume(callback=handle_message,
             dst_queue_name=dst_queue,

@@ -37,8 +37,7 @@ sub = Subscriber("rabbitmq-subscriber",
                  ssl_options)
 
 
-# Now send:
-msg = {"account_id": 123}
+# Now consume:
 dst_ex_name = "reporting"
 routing_key = "reporting.accounts"
 dst_queue = "reporting.accounts"
