@@ -57,7 +57,7 @@ How do I get started?
         CONTAINER ID        IMAGE                       COMMAND                  CREATED             STATUS              PORTS                                                                                                       NAMES
         68f3b6e71563        redis:4.0.5-alpine          "docker-entrypoint..."   34 seconds ago      Up 33 seconds       0.0.0.0:6379->6379/tcp, 0.0.0.0:16379->16379/tcp                                                            celredis1
         3fd938f4d5e0        rabbitmq:3.6.6-management   "docker-entrypoint..."   23 hours ago        Up 33 seconds       4369/tcp, 5671/tcp, 0.0.0.0:5672->5672/tcp, 0.0.0.0:15672->15672/tcp, 15671/tcp, 0.0.0.0:25672->25672/tcp   celrabbit1
-        (venv) driver:/opt/redten/stack/consumer$ 
+        $ 
 
     
 Redis Message Processing Example
