@@ -124,7 +124,7 @@ class Subscriber:
                                  accept=["json"])]
             # end of get_consumer
 
-        # end of RedisCeleryConsumer
+        # end of ConnectorConsumer
 
         self.subscriber_app.steps["consumer"].add(ConnectorConsumer)
 
