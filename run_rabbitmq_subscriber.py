@@ -31,7 +31,7 @@ def handle_message(body, message):
 # Initialize Celery application
 ssl_options = {}
 app = Celery()
-sub = Subscriber("rabbitmq-publisher",
+sub = Subscriber("rabbitmq-subscriber",
                  ev("BROKER_URL", "amqp://rabbitmq:rabbitmq@localhost:5672//"),
                  app,
                  ssl_options)
