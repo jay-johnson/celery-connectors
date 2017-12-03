@@ -15,7 +15,8 @@ class Subscriber:
     def __init__(self,
                  name=ev("SUBSCRIBER_NAME", "celery-subscriber"),
                  auth_url=ev("BROKER_URL", "redis://localhost:6379/0"),
-                 app=None):
+                 app=None,
+                 ssl_options={}):
 
         """
         Available Brokers:
@@ -35,6 +36,7 @@ class Subscriber:
         self.name = name
         self.log = logging.getLogger(self.name)
         self.auth_url = auth_url
+        self.ssl_options = ssl_options
 
         self.subscriber_app = None
 
@@ -51,15 +53,15 @@ class Subscriber:
 
     # end of __init__
 
-    def setup_routing(self, shared_ex_name, consume_queue_names, routing_key=None):
+    def setup_routing(self, ex_name, consume_queue_names, routing_key=None):
 
         self.exchange = None
         if routing_key:
-            self.log.debug("creating Exchange={} topic for rk={}".format(shared_ex_name, routing_key))
-            self.exchange = Exchange(shared_ex_name, type="topic")
+            self.log.debug("creating Exchange={} topic for rk={}".format(ex_name, routing_key))
+            self.exchange = Exchange(ex_name, type="topic")
         else:
-            self.log.debug("creating Exchange={} direct".format(shared_ex_name, routing_key))
-            self.exchange = Exchange(shared_ex_name, type="direct")
+            self.log.debug("creating Exchange={} direct".format(ex_name, routing_key))
+            self.exchange = Exchange(ex_name, type="direct")
         # end of if/else
 
         self.consume_from_queues = []
@@ -70,12 +72,12 @@ class Subscriber:
                 self.log.debug(("creating Queue={} topic rk={} from Exchange={}")
                                .format(queue_name,
                                        routing_key,
-                                       shared_ex_name))
+                                       ex_name))
                 new_queue = Queue(queue_name, exchange=self.exchange, routing_key=routing_key)
             else:
                 self.log.debug(("creating Queue={} direct from Exchange={}")
                                .format(queue_name,
-                                       shared_ex_name))
+                                       ex_name))
                 new_queue = Queue(queue_name, exchange=self.exchange)
             # end of handling queues with direct/topic routing
 

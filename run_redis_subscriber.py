@@ -29,8 +29,12 @@ def handle_message(body, message):
 
 
 # Initialize Celery application
+ssl_options = {}
 app = Celery()
-sub = Subscriber("redis-subscriber", ev("BROKER_URL", "redis://localhost:6379/0"), app)
+sub = Subscriber("redis-subscriber",
+                 ev("BROKER_URL", "redis://localhost:6379/0"),
+                 app,
+                 ssl_options)
 
 
 # Now send:

@@ -54,11 +54,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "celery_connectors"))
 setup(
     name="celery-connectors",
     cmdclass={"build_py": build_py},
-    version="1.0.1",
+    version="1.0.2",
     description="Celery Headless Connectors",
-    long_description="For running headless celery subscribers and " +
-    "kombu publishers to process json or pickled messages using a " +
-    "celery-ready messaging backend. Headless means no task " +
+    long_description="Running headless Celery bootsteps to process " +
+    "json or pickled messages from Redis, RabbitMQ or AWS SQS. " +
+    "Also has a Kombu Publisher with docker RabbitMQ and Redis " +
+    "containers  included as well. Headless means no task " +
     "result backend (like mongo). I am planning to glue Django " +
     "and Jupyter together with this connection framework, and " +
     "allow workers to process messages from my windows laptop " +
