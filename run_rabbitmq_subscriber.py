@@ -38,12 +38,12 @@ sub = Subscriber("rabbitmq-subscriber",
 
 
 # Now consume:
-dst_ex_name = "reporting"
+exchange = "reporting"
 routing_key = "reporting.accounts"
-dst_queue = "reporting.accounts"
+queue = "reporting.accounts"
 sub.consume(callback=handle_message,
-            dst_queue_name=dst_queue,
-            dst_ex_name=dst_ex_name,
+            queue=queue,
+            exchange=exchange,
             routing_key=routing_key)
 
 log.info("End - {}".format(name))

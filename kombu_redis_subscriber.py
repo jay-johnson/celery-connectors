@@ -4,14 +4,13 @@
 import time
 import datetime
 import logging
-from celery import Celery
 from celery_connectors.utils import ev
 from celery_connectors.logging.setup_logging import setup_logging
-from celery_connectors.subscriber import Subscriber
+from celery_connectors.kombu_subscriber import KombuSubscriber
 
 setup_logging()
 
-name = "run-redis-subscriber"
+name = "kombu-redis-subscriber"
 
 log = logging.getLogger(name)
 
@@ -22,26 +21,30 @@ recv_msgs = []
 
 
 def handle_message(body, message):
-    log.info("recv msg props={} body={}".format(message, body))
+    log.info("kombu.subscriber recv msg props={} body={}".format(message, body))
     recv_msgs.append(body)
     message.ack()
 # end of handle_message
 
 
-# Initialize Celery application
+# Initialize KombuSubscriber
 ssl_options = {}
-app = Celery()
-sub = Subscriber("redis-subscriber",
-                 ev("BROKER_URL", "redis://localhost:6379/0"),
-                 app,
-                 ssl_options)
+sub = KombuSubscriber("kombu-redis-subscriber",
+                      ev("BROKER_URL", "redis://localhost:6379/0"),
+                      ssl_options)
 
 
 # Now consume:
+seconds_to_consume = 10.0
+heartbeat = 60
+serializer = "application/json"
 queue = "reporting.accounts"
 sub.consume(callback=handle_message,
             queue=queue,
             exchange=None,
-            routing_key=None)
+            routing_key=None,
+            serializer=serializer,
+            heartbeat=heartbeat,
+            time_to_wait=seconds_to_consume)
 
 log.info("End - {}".format(name))

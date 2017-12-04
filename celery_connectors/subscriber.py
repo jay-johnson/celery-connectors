@@ -4,7 +4,6 @@ from celery import Celery
 from celery import bootsteps
 from kombu import Queue, Exchange, Consumer
 from celery_connectors.utils import ev
-
 from celery_connectors.logging.setup_logging import setup_logging
 
 setup_logging()
@@ -91,8 +90,8 @@ class Subscriber:
 
     def consume(self,
                 callback,
-                dst_queue_name,
-                dst_ex_name=None,
+                queue,
+                exchange=None,
                 routing_key=None):
 
         """
@@ -103,10 +102,10 @@ class Subscriber:
         """
 
         if self.state != "ready":
-            if dst_ex_name and routing_key:
-                self.setup_routing(dst_ex_name, [dst_queue_name], routing_key)
+            if exchange and routing_key:
+                self.setup_routing(exchange, [queue], routing_key)
             else:
-                self.setup_routing(dst_queue_name, [dst_queue_name])
+                self.setup_routing(queue, [queue])
         # end of initializing for the first time
 
         self.log.info(("{} - Subscribed to Exchange={} with routes to queues={} with callback={}")

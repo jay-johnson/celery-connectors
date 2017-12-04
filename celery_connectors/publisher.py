@@ -2,7 +2,6 @@
 import logging
 from kombu import Queue, Exchange, Producer, Connection
 from celery_connectors.utils import ev
-
 from celery_connectors.logging.setup_logging import setup_logging
 
 setup_logging()
@@ -25,8 +24,6 @@ class Publisher:
         self.log = logging.getLogger(self.name)
         self.auth_url = auth_url
         self.ssl_options = ssl_options
-
-        self.subscriber_app = None
 
         self.exchange = None
         self.queue = None

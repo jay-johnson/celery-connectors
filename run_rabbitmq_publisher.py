@@ -19,7 +19,7 @@ log.info("Start - {}".format(name))
 # Celery Transports:
 # http://docs.celeryproject.org/projects/kombu/en/latest/userguide/connections.html#transport-comparison
 
-exchange_name = ev("EXCHANGE", "reporting.accounts")
+exchange_name = ev("EXCHANGE", "reporting")
 queue_name = ev("QUEUE", "reporting.accounts")
 routing_key = ev("RK", "reporting.accounts")
 auth_url = ev("BROKER_URL", "amqp://rabbitmq:rabbitmq@localhost:5672//")

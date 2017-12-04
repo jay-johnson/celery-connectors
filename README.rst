@@ -172,7 +172,80 @@ This example uses Celery bootsteps (http://docs.celeryproject.org/en/latest/user
         | reporting.accounts                            | 1         | 0        | 0              | 0                       |
         +-----------------------------------------------+-----------+----------+----------------+-------------------------+
 
-Debugging with RabbitMQ Admin
+Redis Kombu Subscriber
+======================
+
+If you do not want to use Celery, you can use the ``KombuSubscriber`` class to process messages. This class will wait for a configurable amount of seconds to consume a single message from the subscribed queue and then stop processing.
+
+#.  Run the Redis Publisher
+
+    ::
+
+        $ ./run_redis_publisher.py 
+        2017-12-03 17:26:12,896 - run-redis-publisher - INFO - Start - run-redis-publisher
+        2017-12-03 17:26:12,896 - run-redis-publisher - INFO - Building message
+        2017-12-03 17:26:12,896 - run-redis-publisher - INFO - Sending msg={'account_id': 123} ex=reporting.accounts rk=reporting.accounts
+        2017-12-03 17:26:12,924 - redis-publisher - INFO - READY - PUB - exch=reporting.accounts queue=<Queue reporting.accounts -> <Exchange reporting.accounts(topic) bound to chan:2> -> reporting.accounts bound to chan:2> body={'account_id': 123}
+        2017-12-03 17:26:12,927 - run-redis-publisher - INFO - End - run-redis-publisher
+        $
+
+#.  Run the Redis Kombu Subscriber
+
+    By default, this will wait for a single message message to be delivered within 10 seconds.
+
+    ::
+
+        $ ./kombu_redis_subscriber.py 
+        2017-12-03 17:26:08,854 - kombu-redis-subscriber - INFO - Start - kombu-redis-subscriber
+        2017-12-03 17:26:08,884 - kombu-redis-subscriber - INFO - kombu-redis-subscriber - kombu.subscriber queues=reporting.accounts wait=10.0 callback=<function handle_message at 0x7f70762c7950>
+        2017-12-03 17:26:12,927 - kombu-redis-subscriber - INFO - kombu.subscriber recv msg props=<Message object at 0x7f7068151af8 with details {'state': 'RECEIVED', 'delivery_info': {'exchange': 'reporting.accounts', 'routing_key': 'reporting.accounts'}, 'delivery_tag': '0108f196-71e6-4511-86eb-945e46e0c5ed', 'body_length': 19, 'properties': {}, 'content_type': 'application/json'}> body={'account_id': 123}
+        2017-12-03 17:26:12,928 - kombu-redis-subscriber - INFO - End - kombu-redis-subscriber
+        $
+
+
+RabbitMQ Kombu Subscriber
+=========================
+
+If you do not want to use Celery, you can use the ``KombuSubscriber`` class to process messages. This class will wait for a configurable amount of seconds to consume a single message from the subscribed queue and then stop processing.
+
+#.  Run the RabbitMQ Subscriber
+
+    Please note this output assumes there are no messages in the queue already from a previous test
+
+    ::
+
+        $ ./kombu_rabbitmq_subscriber.py 
+        2017-12-03 17:23:09,067 - kombu-rabbitmq-subscriber - INFO - Start - kombu-rabbitmq-subscriber
+        2017-12-03 17:23:09,091 - kombu-rabbitmq-subscriber - INFO - kombu-rabbitmq-subscriber - kombu.subscriber queues=reporting.accounts wait=10.0 callback=<function handle_message at 0x7f50f8599950>
+        2017-12-03 17:23:19,115 - kombu-rabbitmq-subscriber - INFO - End - kombu-rabbitmq-subscriber
+        $
+
+#.  Run the RabbitMQ Publisher
+
+    ::
+
+        $ ./run_rabbitmq_publisher.py 
+        2017-12-03 17:23:24,026 - run-rabbitmq-publisher - INFO - Start - run-rabbitmq-publisher
+        2017-12-03 17:23:24,028 - run-rabbitmq-publisher - INFO - Building message
+        2017-12-03 17:23:24,028 - run-rabbitmq-publisher - INFO - Sending msg={'account_id': 123} ex=reporting rk=reporting.accounts
+        2017-12-03 17:23:24,047 - rabbitmq-publisher - INFO - READY - PUB - exch=reporting queue=<Queue reporting.accounts -> <Exchange reporting(topic) bound to chan:2> -> reporting.accounts bound to chan:2> body={'account_id': 123}
+        2017-12-03 17:23:24,048 - run-rabbitmq-publisher - INFO - End - run-rabbitmq-publisher
+        $
+
+#.  Run the RabbitMQ Kombu Subscriber
+
+    By default, this will wait for a single message to be delivered within 10 seconds.
+
+    ::
+
+        $ ./kombu_rabbitmq_subscriber.py 
+        2017-12-03 17:23:22,132 - kombu-rabbitmq-subscriber - INFO - Start - kombu-rabbitmq-subscriber
+        2017-12-03 17:23:22,157 - kombu-rabbitmq-subscriber - INFO - kombu-rabbitmq-subscriber - kombu.subscriber queues=reporting.accounts wait=10.0 callback=<function handle_message at 0x7f1a5d4c4950>
+        2017-12-03 17:23:24,049 - kombu-rabbitmq-subscriber - INFO - kombu.subscriber recv msg props=<Message object at 0x7f1a4f602708 with details {'state': 'RECEIVED', 'content_type': 'application/json', 'delivery_info': {'exchange': 'reporting', 'routing_key': 'reporting.accounts'}, 'body_length': 19, 'delivery_tag': 1, 'properties': {}}> body={'account_id': 123}
+        2017-12-03 17:23:24,049 - kombu-rabbitmq-subscriber - INFO - End - kombu-rabbitmq-subscriber
+        $
+
+Debugging with rabbitmqadmin
 =============================
 
 The pip and development build will install ``rabbitmqadmin`` (https://raw.githubusercontent.com/rabbitmq/rabbitmq-management/v3.7.0/bin/rabbitmqadmin) version 3.7.0. It is a great utility for verifying RabbitMQ messaging and does not require having access to the RabbitMQ cluster's host nodes (or a machine with rabbitmqctl on it).
@@ -189,14 +262,24 @@ Script in pip
     $ ./list-queues.sh 
 
     Listing Queues broker=localhost:15672
-    No items
+    +--------------------+-----------+----------+----------------+-------------------------+
+    |        name        | consumers | messages | messages_ready | messages_unacknowledged |
+    +--------------------+-----------+----------+----------------+-------------------------+
+    | celery             | 0         | 0        | 0              | 0                       |
+    | reporting.accounts | 0         | 0        | 0              | 0                       |
+    +--------------------+-----------+----------+----------------+-------------------------+
 
 Manual way
 
 ::
 
     $ rabbitmqadmin.py --host=localhost --port=15672 --username=rabbitmq --password=rabbitmq list queues
-    No items
+    +--------------------+-----------+----------+----------------+-------------------------+
+    |        name        | consumers | messages | messages_ready | messages_unacknowledged |
+    +--------------------+-----------+----------+----------------+-------------------------+
+    | celery             | 0         | 0        | 0              | 0                       |
+    | reporting.accounts | 0         | 0        | 0              | 0                       |
+    +--------------------+-----------+----------+----------------+-------------------------+
     $ 
 
 Checking exchanges
@@ -209,37 +292,81 @@ Script in pip
     $ ./list-exchanges.sh 
 
     Listing Exchanges broker=localhost:15672
-    +--------------------+---------+
-    |        name        |  type   |
-    +--------------------+---------+
-    |                    | direct  |
-    | amq.direct         | direct  |
-    | amq.fanout         | fanout  |
-    | amq.headers        | headers |
-    | amq.match          | headers |
-    | amq.rabbitmq.log   | topic   |
-    | amq.rabbitmq.trace | topic   |
-    | amq.topic          | topic   |
-    +--------------------+---------+
+    +---------------------+---------+
+    |        name         |  type   |
+    +---------------------+---------+
+    |                     | direct  |
+    | amq.direct          | direct  |
+    | amq.fanout          | fanout  |
+    | amq.headers         | headers |
+    | amq.match           | headers |
+    | amq.rabbitmq.log    | topic   |
+    | amq.rabbitmq.trace  | topic   |
+    | amq.topic           | topic   |
+    | celery              | direct  |
+    | celery.pidbox       | fanout  |
+    | celeryev            | topic   |
+    | reply.celery.pidbox | direct  |
+    | reporting.accounts  | topic   |
+    +---------------------+---------+
 
 Manual way
 
 ::
 
-    $ rabbitmqadmin.py --host=localhost --port=15672 --username=rabbitmq --password=rabbitmq list exchanges
-    +--------------------+---------+
-    |        name        |  type   |
-    +--------------------+---------+
-    |                    | direct  |
-    | amq.direct         | direct  |
-    | amq.fanout         | fanout  |
-    | amq.headers        | headers |
-    | amq.match          | headers |
-    | amq.rabbitmq.log   | topic   |
-    | amq.rabbitmq.trace | topic   |
-    | amq.topic          | topic   |
-    +--------------------+---------+
+    $ rabbitmqadmin.py --host=localhost --port=15672 --username=rabbitmq --password=rabbitmq list exchanges name typa
+    +---------------------+---------+
+    |        name         |  type   |
+    +---------------------+---------+
+    |                     | direct  |
+    | amq.direct          | direct  |
+    | amq.fanout          | fanout  |
+    | amq.headers         | headers |
+    | amq.match           | headers |
+    | amq.rabbitmq.log    | topic   |
+    | amq.rabbitmq.trace  | topic   |
+    | amq.topic           | topic   |
+    | celery              | direct  |
+    | celery.pidbox       | fanout  |
+    | celeryev            | topic   |
+    | reply.celery.pidbox | direct  |
+    | reporting.accounts  | topic   |
+    +---------------------+---------+
     $ 
+
+List Bindings
+=============
+
+Script in pip
+
+::
+
+    $ list-bindings.sh 
+
+    Listing Bindings broker=localhost:15672
+    +--------------------+--------------------+--------------------+
+    |       source       |    destination     |    routing_key     |
+    +--------------------+--------------------+--------------------+
+    |                    | celery             | celery             |
+    |                    | reporting.accounts | reporting.accounts |
+    | celery             | celery             | celery             |
+    | reporting          | reporting.accounts | reporting.accounts |
+    +--------------------+--------------------+--------------------+
+
+Manual way
+
+::
+
+    $ rabbitmqadmin.py --host=localhost --port=15672 --username=rabbitmq --password=rabbitmq list bindings source destination routing_key
+    +--------------------+--------------------+--------------------+
+    |       source       |    destination     |    routing_key     |
+    +--------------------+--------------------+--------------------+
+    |                    | celery             | celery             |
+    |                    | reporting.accounts | reporting.accounts |
+    | celery             | celery             | celery             |
+    | reporting          | reporting.accounts | reporting.accounts |
+    +--------------------+--------------------+--------------------+
+
 
 Development Guide
 =================
