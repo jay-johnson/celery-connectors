@@ -54,12 +54,14 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "celery_connectors"))
 setup(
     name="celery-connectors",
     cmdclass={"build_py": build_py},
-    version="1.0.5",
+    version="1.0.6",
     description="Celery Headless Connectors",
     long_description="Running headless Celery bootsteps to process " +
     "json or pickled messages from Redis, RabbitMQ or AWS SQS. " +
+    "Includes Kombu message processors with relay " +
+    "publish-hook support for pub-sub or auto-caching functionality. " +
     "Also has a Kombu Publisher with docker RabbitMQ and Redis " +
-    "containers  included as well. Headless means no task " +
+    "containers too. For background, headless means no task " +
     "result backend (like mongo). I am planning to glue Django " +
     "and Jupyter together with this connection framework, and " +
     "allow workers to process messages from my windows laptop " +
@@ -86,6 +88,10 @@ setup(
         "./celery_connectors/rabbitmq/list-bindings.sh",
         "./celery_connectors/scripts/subscribe-to-rabbitmq.sh",
         "./celery_connectors/scripts/subscribe-to-redis.sh",
+        "./publish-user-conversion-events-redis.py",
+        "./publish-user-conversion-events-rabbitmq.py",
+        "./start-kombu-message-processor-redis.py",
+        "./start-kombu-message-processor-rabbitmq.py",
         "./start-redis-and-rabbitmq.sh",
         "./stop-redis-and-rabbitmq.sh"
     ],

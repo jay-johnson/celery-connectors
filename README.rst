@@ -245,6 +245,94 @@ If you do not want to use Celery, you can use the ``KombuSubscriber`` class to p
         2017-12-03 17:23:24,049 - kombu-rabbitmq-subscriber - INFO - End - kombu-rabbitmq-subscriber
         $
 
+Running a long-running Redis Message Processor
+==============================================
+
+This will simulate setting up a processor that handles user conversion events using a Redis server.
+
+#.  Start the User Conversion Event Processor
+
+    ::
+
+        $ ./start-kombu-message-processor-redis.py 
+        2017-12-03 23:21:55,741 - loader-name - INFO - Start - msg-proc
+        2017-12-03 23:21:55,741 - msg-proc - INFO - msg-proc START - consume_queue=user.events.conversions rk=None
+
+#.  Publish a User Conversion Event
+    
+    From another terminal, publish a user conversion event
+
+    ::
+
+        $ ./publish-user-conversion-events-redis.py 
+        2017-12-03 23:21:58,828 - publish-user-conversion-events - INFO - Start - publish-user-conversion-events
+        2017-12-03 23:21:58,829 - publish-user-conversion-events - INFO - Building message
+        2017-12-03 23:21:58,829 - publish-user-conversion-events - INFO - Sending user conversion event msg={'account_id': 123, 'product_id': 'ABC', 'stripe_id': 789, 'subscription_id': 456} ex=user.events rk=user.events.conversions
+        2017-12-03 23:21:58,858 - publish-uce - INFO - READY - PUB - exch=user.events queue=<Queue user.events.conversions -> <Exchange user.events(topic) bound to chan:2> -> user.events.conversions bound to chan:2> body={'account_id': 123, 'product_id': 'ABC', 'stripe_id': 789, 'subscription_id': 456}
+        2017-12-03 23:21:58,860 - publish-user-conversion-events - INFO - End - publish-user-conversion-events
+        $
+
+#.  Confirm the Processor handled the conversion event
+
+    ::
+
+        2017-12-03 23:21:58,861 - msg-proc - INFO - msg-proc proc start - msg props=<Message object at 0x7f2726ead288 with details {'delivery_info': {'routing_key': 'user.events.conversions', 'exchange': 'user.events'}, 'delivery_tag': 'cecfd467-729a-45a3-abf6-a7f9714ba5d2', 'state': 'RECEIVED', 'properties': {}, 'body_length': 82, 'content_type': 'application/json'}> body={'product_id': 'ABC', 'subscription_id': 456, 'stripe_id': 789, 'account_id': 123}
+        2017-12-03 23:21:58,861 - msg-proc - INFO - No auto-caching or pub-hook set exchange=None
+        2017-12-03 23:21:58,862 - msg-proc - INFO - msg-proc proc done - msg props=<Message object at 0x7f2726ead288 with details {'delivery_info': {'routing_key': 'user.events.conversions', 'exchange': 'user.events'}, 'delivery_tag': 'cecfd467-729a-45a3-abf6-a7f9714ba5d2', 'state': 'ACK', 'properties': {}, 'body_length': 82, 'content_type': 'application/json'}> body={'product_id': 'ABC', 'subscription_id': 456, 'stripe_id': 789, 'account_id': 123}
+
+Run a Message Processor from RabbitMQ with Relay Publish Hook to Redis
+======================================================================
+
+This could also be set up for auto-caching instead of this pub-sub flow because this delivers a post-processing json dictionary into a Redis key (publish hook), and let's be honest Redis is great at caching all the datas.
+
+#.  Clear out the ``reporting.accounts`` Redis key
+
+    Either run ``kombu_redis_subscriber.py`` until there's no more messages being consumed or you can restart the docker containers with the ``stop-redis-and-rabbitmq.sh`` and ``start-redis-and-rabbitmq.sh``, but the point is verify there's nothing in the ``reporting.accounts`` key (could just delete it with the ``redis-cli``).
+
+#.  Start the Kombu RabbitMQ Message Processor
+
+    ::
+
+        $ ./start-kombu-message-processor-rabbitmq.py 
+        2017-12-03 23:09:30,912 - loader-name - INFO - Start - msg-proc
+        2017-12-03 23:09:30,913 - msg-proc - INFO - msg-proc START - consume_queue=user.events.conversions rk=reporting.accounts
+
+#.  Send a User Conversion Event to RabbitMQ
+
+    ::
+
+        $ ./publish-user-conversion-events-rabbitmq.py 
+        2017-12-03 23:30:01,892 - publish-user-conversion-events - INFO - Start - publish-user-conversion-events
+        2017-12-03 23:30:01,893 - publish-user-conversion-events - INFO - Building message
+        2017-12-03 23:30:01,893 - publish-user-conversion-events - INFO - Sending user conversion event msg={'subscription_id': 222, 'stripe_id': 333, 'account_id': 111, 'product_id': 'DEF'} ex=user.events rk=user.events.conversions
+        2017-12-03 23:30:01,930 - publish-uce-rabbitmq - INFO - READY - PUB - exch=user.events queue=<Queue user.events.conversions -> <Exchange user.events(topic) bound to chan:2> -> user.events.conversions bound to chan:2> body={'subscription_id': 222, 'stripe_id': 333, 'account_id': 111, 'product_id': 'DEF'}
+        2017-12-03 23:30:01,931 - publish-user-conversion-events - INFO - End - publish-user-conversion-events
+
+#.  Verify the Kombu RabbitMQ Message Processor Handled the Message
+
+    Notice the ``pub-hook`` shows the relay-specific log lines
+
+    ::
+
+        2017-12-03 23:30:01,935 - msg-proc - INFO - msg-proc proc start - msg props=<Message object at 0x7f0b1264be58 with details {'delivery_tag': 3, 'delivery_info': {'exchange': 'user.events', 'routing_key': 'user.events.conversions'}, 'state': 'RECEIVED', 'content_type': 'application/json', 'body_length': 82, 'properties': {}}> body={'subscription_id': 222, 'stripe_id': 333, 'product_id': 'DEF', 'account_id': 111}
+        2017-12-03 23:30:01,936 - msg-proc - INFO - msg-proc pub-hook - build - hook msg body
+        2017-12-03 23:30:01,936 - msg-proc - INFO - msg-proc pub-hook - send - exchange=reporting.accounts rk=reporting.accounts sz=json
+        2017-12-03 23:30:01,936 - msg-pub - INFO - READY - PUB - exch=reporting.accounts queue=<Queue reporting.accounts -> <Exchange reporting.accounts(topic) bound to chan:2> -> reporting.accounts bound to chan:2> body={'org_msg': {'subscription_id': 222, 'stripe_id': 333, 'product_id': 'DEF', 'account_id': 111}, 'created': '2017-12-03 23:30:01', 'data': {}, 'source': 'msg-proc', 'version': 1}
+        2017-12-03 23:30:01,937 - msg-proc - INFO - msg-proc proc done - msg props=<Message object at 0x7f0b1264be58 with details {'delivery_tag': 3, 'delivery_info': {'exchange': 'user.events', 'routing_key': 'user.events.conversions'}, 'state': 'ACK', 'content_type': 'application/json', 'body_length': 82, 'properties': {}}> body={'subscription_id': 222, 'stripe_id': 333, 'product_id': 'DEF', 'account_id': 111}
+
+#.  Process the Redis ``reporting.accounts`` queue
+
+    This could also be cached data about the user that made this purchase like a write-through-cache.
+
+    ::
+
+        $ ./kombu_redis_subscriber.py 
+        2017-12-03 23:30:44,203 - kombu-redis-subscriber - INFO - Start - kombu-redis-subscriber
+        2017-12-03 23:30:44,203 - kombu-redis-subscriber - INFO - setup routing
+        2017-12-03 23:30:44,234 - kombu-redis-subscriber - INFO - kombu-redis-subscriber - kombu.subscriber queues=reporting.accounts consuming with callback=<function handle_message at 0x7f8b1b03b950>
+        2017-12-03 23:30:44,236 - kombu-redis-subscriber - INFO - kombu.subscriber recv msg props=<Message object at 0x7f8b0cec68b8 with details {'delivery_tag': 'c1d985a3-c954-424b-b9dd-afa32c786163', 'properties': {}, 'body_length': 177, 'delivery_info': {'exchange': 'reporting.accounts', 'routing_key': 'reporting.accounts'}, 'state': 'RECEIVED', 'content_type': 'application/json'}> body={'version': 1, 'data': {}, 'org_msg': {'product_id': 'DEF', 'stripe_id': 333, 'subscription_id': 222, 'account_id': 111}, 'created': '2017-12-03 23:30:01', 'source': 'msg-proc'}
+        2017-12-03 23:30:44,237 - kombu-redis-subscriber - INFO - End - kombu-redis-subscriber
+
 Debugging with rabbitmqadmin
 =============================
 

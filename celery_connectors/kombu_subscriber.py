@@ -36,7 +36,12 @@ class KombuSubscriber:
         self.auth_url = auth_url
         self.ssl_options = ssl_options
 
-        self.subscriber_app = None
+        self.conn = None
+        self.new_conn = None
+        self.channel = None
+        self.consumer = None
+        self.process_message_callback = None
+        self.drain_time = 1.0
 
         self.exchange = None
         self.exchange_name = ""
@@ -56,6 +61,7 @@ class KombuSubscriber:
                       heartbeat=60,
                       serializer="application/json"):
 
+        self.state = "not_ready"
         self.exchange = None
         self.exchange_name = exchange
         self.routing_key = routing_key
@@ -110,6 +116,7 @@ class KombuSubscriber:
         #
         self.conn = Connection(self.auth_url, heartbeat=heartbeat)
         self.channel = self.conn.channel()
+        self.process_message_callback = process_message_callback
         self.log.debug(("creating kombu.Consumer broker={} ssl={} ex={} rk={} queue={} serializer={}")
                        .format(self.auth_url,
                                self.ssl_options,
@@ -120,7 +127,7 @@ class KombuSubscriber:
 
         self.consumer = Consumer(self.conn,
                                  queues=self.consume_from_queues,
-                                 callbacks=[process_message_callback],
+                                 callbacks=[self.process_message_callback],
                                  accept=["{}".format(self.serializer)])
 
         self.log.debug("creating kombu.Exchange={}".format(self.exchange))
@@ -129,6 +136,8 @@ class KombuSubscriber:
         self.log.debug("creating kombu.Queue={}".format(self.queue_name))
         self.queue.maybe_bind(self.conn)
         self.queue.declare()
+
+        self.consumer.consume()
 
         self.state = "ready"
     # end of setup_routing
@@ -139,6 +148,7 @@ class KombuSubscriber:
         channel = revived_connection.channel()
         self.consumer.revive(channel)
         self.consumer.consume()
+
         return revived_connection
     # end of establish_connection
 
@@ -149,7 +159,9 @@ class KombuSubscriber:
                 routing_key=None,
                 heartbeat=60,
                 serializer="application/json",
-                time_to_wait=1.0):
+                time_to_wait=1.0,
+                forever=False,
+                silent=False):
 
         """
         Redis does not have an Exchange or Routing Keys, but RabbitMQ does.
@@ -158,7 +170,9 @@ class KombuSubscriber:
         http://docs.celeryproject.org/en/latest/getting-started/brokers/redis.html#configuration
         """
 
-        if self.state != "ready":
+        if self.state != "ready" or queue != self.queue_name:
+            if not silent:
+                self.log.info("setup routing")
             if exchange and routing_key:
                 self.setup_routing(exchange,
                                    [queue],
@@ -178,28 +192,27 @@ class KombuSubscriber:
         not_done = True
 
         while not_done:
-            self.log.info(("{} - kombu.subscriber queues={} wait={} callback={}")
-                          .format(self.name,
-                                  self.queue_name,
-                                  time_to_wait,
-                                  callback))
 
-            self.new_conn = self.establish_connection()
+            if not forever and not silent:
+                self.log.info(("{} - kombu.subscriber queues={} consuming with callback={}")
+                              .format(self.name,
+                                      self.queue_name,
+                                      callback))
+
             try:
                 self.consumer.consume()
-
-                self.log.debug("draining events time_to_wait={}".format(time_to_wait))
-                self.new_conn.drain_events(timeout=time_to_wait)
-            except socket.timeout:
-                self.log.debug("heartbeat check")
-                self.new_conn.heartbeat_check()
+                self.log.debug("draining events time_to_wait={}".format(self.drain_time))
+                self.conn.drain_events(timeout=self.drain_time)
+            except socket.timeout as t:
+                self.log.debug("heartbeat check={}".format(t))
+                self.conn.heartbeat_check()
             except Exception as e:
                 self.log.info(("{} - kombu.subscriber consume hit ex={} queue={}")
                               .format(self.name,
                                       e,
-                                      queue_name))
+                                      self.queue_name))
 
-            not_done = False
+            not_done = forever
         # end of hearbeat and event checking
 
     # end of consume
