@@ -467,6 +467,8 @@ Development Guide
 
 #.  Run tests
 
+    The tests require the docker containers to be running prior to starting.
+
     ::
 
         python setup.py test

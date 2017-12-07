@@ -3,7 +3,7 @@ import socket
 import logging
 from kombu import Connection, Consumer, Queue, Exchange
 from celery_connectors.utils import ev
-from celery_connectors.logging.setup_logging import setup_logging
+from celery_connectors.log.setup_logging import setup_logging
 
 setup_logging()
 

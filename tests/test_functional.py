@@ -1,22 +1,6 @@
 # -*- coding: utf-8 -*-
 import unittest
-
-
-class BaseTestCase(unittest.TestCase):
-
-    debug = False
-
-    def setUp(self):
-        if self.debug:
-            print("setUp")
-    # end of setUp
-
-    def tearDown(self):
-        if self.debug:
-            print("tearDown")
-    # end of tearDown
-
-# end of BaseTestCase
+from tests.base_test import BaseTestCase
 
 
 class FunctionalTest(BaseTestCase):

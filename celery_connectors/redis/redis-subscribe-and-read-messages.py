@@ -5,7 +5,7 @@ import sys
 import time
 import json
 import logging
-from celery_connectors.logging.setup_logging import setup_logging
+from celery_connectors.log.setup_logging import setup_logging
 from celery_connectors.redis.redis_json_application import RedisJSONApplication
 
 port = 6379

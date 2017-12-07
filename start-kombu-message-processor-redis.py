@@ -5,7 +5,7 @@ import time
 import datetime
 import logging
 from celery_connectors.utils import ev
-from celery_connectors.logging.setup_logging import setup_logging
+from celery_connectors.log.setup_logging import setup_logging
 from celery_connectors.message_processor import MessageProcessor
 
 setup_logging()

@@ -2,7 +2,7 @@
 import logging
 from kombu import Queue, Exchange, Producer, Connection
 from celery_connectors.utils import ev
-from celery_connectors.logging.setup_logging import setup_logging
+from celery_connectors.log.setup_logging import setup_logging
 
 setup_logging()
 
@@ -111,7 +111,8 @@ class Publisher:
                 priority=0,
                 ttl=None,
                 serializer="json",
-                retry=True):
+                retry=True,
+                silent=False):
 
         """
         Redis does not have an Exchange or Routing Keys, but RabbitMQ does.
@@ -127,11 +128,12 @@ class Publisher:
                                serializer)
         # end of initializing for the first time
 
-        self.log.info(("{} - PUB - exch={} queue={} body={}")
-                      .format(self.state.upper(),
-                              self.exchange.name,
-                              self.queue,
-                              body))
+        if not silent:
+            self.log.info(("{} - PUB - exch={} queue={} body={}")
+                          .format(self.state.upper(),
+                                  self.exchange.name,
+                                  self.queue,
+                                  body))
 
         # http://docs.celeryproject.org/projects/kombu/en/latest/_modules/kombu/messaging.html#Producer.publish
         send_result = self.producer.publish(
@@ -144,11 +146,13 @@ class Publisher:
             retry=True
         )
 
-        self.log.debug(("{} - PUB DONE - exch={} queues={} body={}")
+        self.log.debug(("{} - PUB DONE - "
+                        "exch={} queues={} body={} res={}")
                        .format(self.state.upper(),
                                self.exchange.name,
                                self.queue,
-                               body))
+                               body,
+                               send_result))
 
         return send_result
     # end of publish

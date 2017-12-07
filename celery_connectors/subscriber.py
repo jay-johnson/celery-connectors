@@ -4,7 +4,7 @@ from celery import Celery
 from celery import bootsteps
 from kombu import Queue, Exchange, Consumer
 from celery_connectors.utils import ev
-from celery_connectors.logging.setup_logging import setup_logging
+from celery_connectors.log.setup_logging import setup_logging
 
 setup_logging()
 

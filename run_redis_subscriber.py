@@ -6,7 +6,7 @@ import datetime
 import logging
 from celery import Celery
 from celery_connectors.utils import ev
-from celery_connectors.logging.setup_logging import setup_logging
+from celery_connectors.log.setup_logging import setup_logging
 from celery_connectors.subscriber import Subscriber
 
 setup_logging()
