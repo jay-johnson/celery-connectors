@@ -20,6 +20,8 @@ os.chdir(os.path.abspath(cur_path))
 install_requires = [
     "pep8>=1.7.1",
     "flake8>=3.4.1",
+    "boto3",
+    "pycurl",
     "redis",
     "celery>=4.1.0",
     "kombu>=4.1.0",
@@ -54,7 +56,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "celery_connectors"))
 setup(
     name="celery-connectors",
     cmdclass={"build_py": build_py},
-    version="1.0.7",
+    version="1.0.8",
     description="Celery Headless Connectors",
     long_description="Running headless Celery bootsteps to process " +
     "json or pickled messages from Redis, RabbitMQ or AWS SQS. " +

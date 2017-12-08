@@ -333,6 +333,11 @@ This could also be set up for auto-caching instead of this pub-sub flow because 
         2017-12-03 23:30:44,236 - kombu-redis-subscriber - INFO - kombu.subscriber recv msg props=<Message object at 0x7f8b0cec68b8 with details {'delivery_tag': 'c1d985a3-c954-424b-b9dd-afa32c786163', 'properties': {}, 'body_length': 177, 'delivery_info': {'exchange': 'reporting.accounts', 'routing_key': 'reporting.accounts'}, 'state': 'RECEIVED', 'content_type': 'application/json'}> body={'version': 1, 'data': {}, 'org_msg': {'product_id': 'DEF', 'stripe_id': 333, 'subscription_id': 222, 'account_id': 111}, 'created': '2017-12-03 23:30:01', 'source': 'msg-proc'}
         2017-12-03 23:30:44,237 - kombu-redis-subscriber - INFO - End - kombu-redis-subscriber
 
+SQS - Experimental
+==================
+
+I have opened a PR for fixing the kombu http client.
+
 Debugging with rabbitmqadmin
 =============================
 
@@ -472,6 +477,41 @@ Development Guide
     ::
 
         python setup.py test
+
+Debugging
+=========
+
+
+#.  pycURL Reinstall with OpenSSL
+
+    For anyone wanting to use kombu SQS with python 3, I had to uninstall pycurl and install it with openssl.
+
+    The error I saw this happening on reported:
+
+    ::
+
+        kombu-sqs-subscriber - kombu.subscriber consume hit ex=The curl client requires the pycurl library. queue=test1
+
+    So I opened up a python shell
+
+    ::
+
+        $ python
+        Python 3.5.3 (default, May 11 2017, 09:10:41) 
+        [GCC 6.3.1 20161221 (Red Hat 6.3.1-1)] on linux
+        Type "help", "copyright", "credits" or "license" for more information.
+        >>> import pycurl
+        Traceback (most recent call last):
+          File "<stdin>", line 1, in <module>
+        ImportError: pycurl: libcurl link-time ssl backend (nss) is different from compile-time ssl backend (none/other)
+        >>> 
+
+    Uninstalled and Reinstalled pycurl with nss
+
+    ::
+
+        pip uninstall -y pycurl; pip install pycurl --compile --global-option="--with-nss" pycurl
+
 
 Linting
 -------

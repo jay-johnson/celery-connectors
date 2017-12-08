@@ -1,8 +1,5 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
-import time
-import datetime
 import logging
 from celery import Celery
 from celery_connectors.utils import ev

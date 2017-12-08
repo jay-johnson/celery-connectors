@@ -1,9 +1,7 @@
-# -*- coding: utf-8 -*-
 import logging
-import unittest
 import datetime
+import unittest
 import uuid
-from celery_connectors.log.setup_logging import setup_logging
 from celery_connectors.utils import ev
 from celery_connectors.publisher import Publisher
 from celery_connectors.kombu_subscriber import KombuSubscriber
@@ -89,12 +87,14 @@ class BaseTestCase(unittest.TestCase):
                        body,
                        msg):
 
-        log.info(("test={} got "
+        log.info(("test={} BASETEST handle_message got "
                   "body={} msg={}")
-                 .format(self,
-                         test_id,
+                 .format(self.test_id,
                          body,
                          msg))
+
+        if msg:
+            msg.ack()
     # end of handle_message
 
     def connect_pub(self,
@@ -109,7 +109,7 @@ class BaseTestCase(unittest.TestCase):
         if auth_url:
             use_auth_url = auth_url
         if len(ssl_options) > 0:
-            use_ssl_options = ssl_optios
+            use_ssl_options = ssl_options
         if len(ssl_options) > 0:
             use_pub_attrs = use_pub_attrs
 
@@ -131,7 +131,7 @@ class BaseTestCase(unittest.TestCase):
         if auth_url:
             use_auth_url = auth_url
         if len(ssl_options) > 0:
-            use_ssl_options = ssl_optios
+            use_ssl_options = ssl_options
         if len(ssl_options) > 0:
             use_sub_attrs = use_sub_attrs
 
@@ -222,15 +222,15 @@ class BaseTestCase(unittest.TestCase):
                 assert(self.pub)
 
         if self.pub:
-            pub_result = self.pub.publish(body=body,
-                                          exchange=exchange,
-                                          routing_key=routing_key,
-                                          queue=queue,
-                                          serializer=serializer,
-                                          priority=priority,
-                                          ttl=ttl,
-                                          retry=retry,
-                                          silent=silent)
+            self.pub.publish(body=body,
+                             exchange=exchange,
+                             routing_key=routing_key,
+                             queue=queue,
+                             serializer=serializer,
+                             priority=priority,
+                             ttl=ttl,
+                             retry=retry,
+                             silent=silent)
         else:
             log.info("Pub is None already - client should not call publish")
     # end of publish

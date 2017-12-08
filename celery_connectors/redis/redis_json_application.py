@@ -1,4 +1,3 @@
-import sys
 import json
 from time import sleep
 from celery_connectors.redis.redis_wrapper import RedisWrapper
@@ -116,6 +115,11 @@ class RedisJSONApplication(BaseRedisApplication):
 
         # By default RedisWrapper returns None when the timeout is hit
         msg = None
+
+        key = queue
+        if not key:
+            key = self.m_queue_name
+
         try:
             # By default RedisWrapper returns None when the timeout is hit
             if end_idx == -1:
@@ -195,14 +199,14 @@ class RedisJSONApplication(BaseRedisApplication):
     # end of get_message
 
     def put_into_key(self, key, msg_object):
-        msg = self.m_rw.put_into_key(key, msg_object)
+        self.m_rw.put_into_key(key, msg_object)
 
         self.update_put_count()
         return None
     # end of put_into_key
 
     def put_message(self, msg_object):
-        msg = self.m_rw.put(msg_object)
+        self.m_rw.put(msg_object)
 
         self.update_put_count()
         return None
@@ -245,11 +249,6 @@ class RedisJSONApplication(BaseRedisApplication):
 
         return msg
     # end of wait_for_message_on_key
-
-    def put_into_key(self, key, msg_object):
-        msg = self.m_rw.put_into_key(key, msg_object)
-        return None
-    # end of put_into_key
 
     def exists(self, key):
         return self.m_rw.exists(key)

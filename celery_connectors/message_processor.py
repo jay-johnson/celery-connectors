@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-import time
 import datetime
 import logging
 from celery_connectors.utils import ev
@@ -17,9 +15,11 @@ class MessageProcessor:
                  sub_auth_url=ev("SUB_BROKER_URL", "redis://localhost:6379/0"),
                  sub_ssl_options={},
                  sub_serializer="application/json",
+                 sub_silent=False,
                  pub_auth_url=ev("PUB_BROKER_URL", "redis://localhost:6379/0"),
                  pub_ssl_options={},
-                 pub_serializer="json"):
+                 pub_serializer="json",
+                 pub_silent=False):
 
         self.name = name
         self.log = logging.getLogger(self.name)
@@ -42,6 +42,9 @@ class MessageProcessor:
         self.routing_key = None
         self.pub_routing_key = None
         self.pub_hook_version = 1
+
+        self.sub_verbose = not sub_silent
+        self.pub_verbose = not pub_silent
 
     # end of __init__
 
@@ -66,18 +69,20 @@ class MessageProcessor:
 
             processing_data = {}
 
-            self.log.info(("{} pub-hook - build - hook msg body")
-                          .format(self.name,
-                                  self.exchange_name,
-                                  self.routing_key))
+            if self.pub_verbose:
+                self.log.info(("{} pub-hook - build - hook msg body")
+                              .format(self.name,
+                                      self.exchange_name,
+                                      self.routing_key))
 
             publish_hook_body = self.build_publish_node(body, data=processing_data)
 
-            self.log.info(("{} pub-hook - send - exchange={} rk={} sz={}")
-                          .format(self.name,
-                                  self.exchange_name,
-                                  self.routing_key,
-                                  self.pub_serializer))
+            if self.pub_verbose:
+                self.log.info(("{} pub-hook - send - exchange={} rk={} sz={}")
+                              .format(self.name,
+                                      self.exchange_name,
+                                      self.routing_key,
+                                      self.pub_serializer))
 
             try:
                 publish_hook_result = self.get_pub().publish(body=publish_hook_body,
@@ -86,6 +91,13 @@ class MessageProcessor:
                                                              queue=self.routing_key,
                                                              serializer=self.pub_serializer,
                                                              retry=True)
+                if self.pub_verbose:
+                    self.log.info(("{} pub-hook - send - done "
+                                   "exchange={} rk={} res={}")
+                                  .format(self.name,
+                                          self.routing_key,
+                                          publish_hook_result))
+
             except Exception as hookfailed:
                 self.log.info(("{} Non-fatal - publish hook failed " +
                                "body={} exchange={} rk={} sz={} ex={}")
@@ -130,13 +142,17 @@ class MessageProcessor:
                       pub_serializer="application/json",
                       sub_serializer="application/json",
                       pub_queue_name=None,
-                      seconds_to_consume=10.0,
-                      forever=True):
+                      seconds_to_consume=1.0,
+                      forever=True,
+                      silent=False):
 
         self.queue_name = queue
         self.exchange_name = exchange
         self.routing_key = routing_key
         self.pub_queue_name = pub_queue_name
+        self.pub_serializer = pub_serializer
+        self.sub_serializer = sub_serializer
+        sub_silent = silent
 
         self.log.info(("{} START - consume_queue={} rk={}")
                       .format(self.name,
@@ -146,18 +162,14 @@ class MessageProcessor:
         not_done = True
         while not_done:
 
-            seconds_to_consume = 1.0
-            heartbeat = 60
-            serializer = "application/json"
-            queue = "reporting.accounts"
             self.get_sub().consume(callback=self.process_message,
                                    queue=self.queue_name,
                                    exchange=None,
                                    routing_key=None,
-                                   serializer=serializer,
+                                   serializer=self.sub_serializer,
                                    heartbeat=heartbeat,
                                    time_to_wait=seconds_to_consume,
-                                   silent=True)
+                                   silent=sub_silent)
 
             if not forever:
                 not_done = False

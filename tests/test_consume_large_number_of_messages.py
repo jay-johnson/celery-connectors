@@ -1,7 +1,4 @@
-# -*- coding: utf-8 -*-
 import logging
-import unittest
-import time
 from celery_connectors.utils import get_percent_done
 from tests.base_test import BaseTestCase
 
@@ -123,7 +120,7 @@ class TestConsumeLargeNumberOfMessages(BaseTestCase):
                          priority=0,
                          ttl=None,
                          serializer=self.pub_serializer,
-                         retry=True)
+                         retry=pub_retry)
 
             num_sent += 1
 

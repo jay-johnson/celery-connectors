@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import socket
 import logging
 from kombu import Connection, Consumer, Queue, Exchange
@@ -59,7 +58,8 @@ class KombuSubscriber:
                       process_message_callback,
                       routing_key=None,
                       heartbeat=60,
-                      serializer="application/json"):
+                      serializer="application/json",
+                      transport_options={}):
 
         self.state = "not_ready"
         self.exchange = None
@@ -114,7 +114,9 @@ class KombuSubscriber:
         #               "cert_reqs": ssl.CERT_REQUIRED,
         #          })
         #
-        self.conn = Connection(self.auth_url, heartbeat=heartbeat)
+        self.conn = Connection(self.auth_url,
+                               heartbeat=heartbeat,
+                               transport_options=transport_options)
         self.channel = self.conn.channel()
         self.process_message_callback = process_message_callback
         self.log.debug(("creating kombu.Consumer broker={} ssl={} ex={} rk={} queue={} serializer={}")
@@ -161,7 +163,10 @@ class KombuSubscriber:
                 serializer="application/json",
                 time_to_wait=1.0,
                 forever=False,
-                silent=False):
+                silent=False,
+                transport_options={},
+                *args,
+                **kwargs):
 
         """
         Redis does not have an Exchange or Routing Keys, but RabbitMQ does.
@@ -204,7 +209,9 @@ class KombuSubscriber:
                 self.log.debug("draining events time_to_wait={}".format(self.drain_time))
                 self.conn.drain_events(timeout=self.drain_time)
             except socket.timeout as t:
-                self.log.debug("heartbeat check={}".format(t))
+                self.log.debug(("detected socket.timeout - "
+                                "running heartbeat check={}")
+                               .format(t))
                 self.conn.heartbeat_check()
             except Exception as e:
                 self.log.info(("{} - kombu.subscriber consume hit ex={} queue={}")

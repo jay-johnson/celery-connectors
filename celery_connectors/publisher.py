@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import logging
 from kombu import Queue, Exchange, Producer, Connection
 from celery_connectors.utils import ev
@@ -40,7 +39,15 @@ class Publisher:
 
     # end of __init__
 
-    def setup_routing(self, exchange_name, queue_name, routing_key, serializer="json", on_return=None):
+    def setup_routing(self,
+                      exchange_name,
+                      queue_name,
+                      routing_key,
+                      serializer="json",
+                      on_return=None,
+                      transport_options={},
+                      *args,
+                      **kwargs):
 
         self.exchange_name = exchange_name
         self.exchange = None
@@ -56,9 +63,12 @@ class Publisher:
             self.exchange_type = "direct"
         # end of if/else
 
-        self.exchange = Exchange(self.exchange_name, type=self.exchange_type)
+        self.exchange = Exchange(self.exchange_name,
+                                 type=self.exchange_type)
 
-        self.queue = Queue(self.queue_name, exchange=self.exchange, routing_key=self.routing_key)
+        self.queue = Queue(self.queue_name,
+                           exchange=self.exchange,
+                           routing_key=self.routing_key)
 
         self.declare_entities = [
             self.exchange,
@@ -78,7 +88,7 @@ class Publisher:
         #               "cert_reqs": ssl.CERT_REQUIRED,
         #          })
         #
-        self.conn = Connection(self.auth_url)
+        self.conn = Connection(self.auth_url, transport_options=transport_options)
         self.channel = self.conn.channel()
         self.log.debug(("creating kombu.Producer broker={} ssl={} ex={} rk={} serializer={}")
                        .format(self.auth_url,
@@ -91,7 +101,9 @@ class Publisher:
                                  exchange=self.exchange,
                                  routing_key=self.routing_key,
                                  serializer=self.serializer,
-                                 on_return=None)
+                                 on_return=None,
+                                 *args,
+                                 **kwargs)
 
         self.log.debug("creating kombu.Exchange={}".format(self.exchange))
         self.producer.declare()
@@ -112,7 +124,10 @@ class Publisher:
                 ttl=None,
                 serializer="json",
                 retry=True,
-                silent=False):
+                silent=False,
+                transport_options={},
+                *args,
+                **kwargs):
 
         """
         Redis does not have an Exchange or Routing Keys, but RabbitMQ does.
@@ -122,10 +137,12 @@ class Publisher:
         """
 
         if self.state != "ready":
-            self.setup_routing(exchange,
-                               queue,
-                               routing_key,
-                               serializer)
+            self.setup_routing(exchange_name=exchange,
+                               queue_name=queue,
+                               routing_key=routing_key,
+                               serializer=serializer,
+                               on_return=None,
+                               transport_options=transport_options)
         # end of initializing for the first time
 
         if not silent:
@@ -143,16 +160,19 @@ class Publisher:
             serializer=self.serializer,
             priority=priority,
             expiration=ttl,
-            retry=True
+            retry=True,
+            *args,
+            **kwargs
         )
 
-        self.log.debug(("{} - PUB DONE - "
-                        "exch={} queues={} body={} res={}")
-                       .format(self.state.upper(),
-                               self.exchange.name,
-                               self.queue,
-                               body,
-                               send_result))
+        if not silent:
+            self.log.debug(("{} - PUB DONE - "
+                            "exch={} queues={} body={} res={}")
+                           .format(self.state.upper(),
+                                   self.exchange.name,
+                                   self.queue,
+                                   body,
+                                   send_result))
 
         return send_result
     # end of publish

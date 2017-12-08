@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-import unittest
 from tests.base_test import BaseTestCase
 
 

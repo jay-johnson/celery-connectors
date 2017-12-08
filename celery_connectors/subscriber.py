@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import logging
 from celery import Celery
 from celery import bootsteps
@@ -45,8 +44,6 @@ class Subscriber:
         else:
             self.subscriber_app = Celery()
 
-        self.subscriber_app.conf.broker_url = self.auth_url
-
         self.exchange = None
         self.consume_from_queues = []
 
@@ -56,11 +53,14 @@ class Subscriber:
 
         self.exchange = None
         if routing_key:
-            self.log.debug("creating Exchange={} topic for rk={}".format(ex_name, routing_key))
+            self.log.debug("creating Exchange={} topic for rk={}".format(ex_name,
+                                                                         routing_key))
             self.exchange = Exchange(ex_name, type="topic")
         else:
-            self.log.debug("creating Exchange={} direct".format(ex_name, routing_key))
-            self.exchange = Exchange(ex_name, type="direct")
+            self.log.debug("creating Exchange={} direct".format(ex_name,
+                                                                routing_key))
+            self.exchange = Exchange(ex_name,
+                                     type="direct")
         # end of if/else
 
         self.consume_from_queues = []
@@ -72,7 +72,9 @@ class Subscriber:
                                .format(queue_name,
                                        routing_key,
                                        ex_name))
-                new_queue = Queue(queue_name, exchange=self.exchange, routing_key=routing_key)
+                new_queue = Queue(queue_name,
+                                  exchange=self.exchange,
+                                  routing_key=routing_key)
             else:
                 self.log.debug(("creating Queue={} direct from Exchange={}")
                                .format(queue_name,
@@ -92,7 +94,8 @@ class Subscriber:
                 callback,
                 queue,
                 exchange=None,
-                routing_key=None):
+                routing_key=None,
+                silent=False):
 
         """
         Redis does not have an Exchange or Routing Keys, but RabbitMQ does.
@@ -108,11 +111,13 @@ class Subscriber:
                 self.setup_routing(queue, [queue])
         # end of initializing for the first time
 
-        self.log.info(("{} - Subscribed to Exchange={} with routes to queues={} with callback={}")
-                      .format(self.state.upper(),
-                              self.exchange.name,
-                              len(self.consume_from_queues),
-                              callback))
+        if not silent:
+            self.log.info(("{} - Subscribed to Exchange={} with "
+                           "routes to queues={} with callback={}")
+                          .format(self.state.upper(),
+                                  self.exchange.name,
+                                  len(self.consume_from_queues),
+                                  callback))
 
         consume_from_queues = self.consume_from_queues
 

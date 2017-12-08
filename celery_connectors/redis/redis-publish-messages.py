@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 
 import os
-import sys
 import uuid
-import json
 import logging
 from celery_connectors.log.setup_logging import setup_logging
 from celery_connectors.redis.redis_json_application import RedisJSONApplication
