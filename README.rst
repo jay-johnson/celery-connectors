@@ -338,6 +338,42 @@ SQS - Experimental
 
 I have opened a PR for fixing the kombu http client.
 
+#.  Export your AWS Key and Secret Key
+
+    ::
+
+        export SQS_AWS_ACCESS_KEY=<ACCESS KEY>
+        export SQS_AWS_SECRET_KEY=<SECRET KEY>
+
+
+#.  Publish to SQS
+
+    ::
+
+        $ ./kombu_sqs_publisher.py 
+        2017-12-08 02:43:13,915 - kombu-sqs-publisher - INFO - Start - kombu-sqs-publisher
+        2017-12-08 02:43:13,916 - kombu-sqs-publisher - INFO - Building message
+        2017-12-08 02:43:13,916 - kombu-sqs-publisher - INFO - Sending user conversion event msg={'product_id': 'DEF', 'stripe_id': 333, 'account_id': 111, 'subscription_id': 222, 'sent': '2017-12-08T02:43:13.916717'} ex=test1 rk=test1
+        2017-12-08 02:43:14,038 - botocore.vendored.requests.packages.urllib3.connectionpool - INFO - Starting new HTTPS connection (1): queue.amazonaws.com
+        2017-12-08 02:43:14,609 - botocore.vendored.requests.packages.urllib3.connectionpool - INFO - Starting new HTTPS connection (1): queue.amazonaws.com
+        2017-12-08 02:43:15,202 - kombu-sqs-publisher - INFO - READY - PUB - exch=test1 queue=<Queue test1 -> <Exchange test1(topic) bound to chan:2> -> test1 bound to chan:2> body={'product_id': 'DEF', 'stripe_id': 333, 'account_id': 111, 'subscription_id': 222, 'sent': '2017-12-08T02:43:13.916717'}
+        2017-12-08 02:43:15,327 - kombu-sqs-publisher - INFO - End - kombu-sqs-publisher
+        $
+
+#.  Subscribe to SQS
+    
+    ::
+    
+        $ ./kombu_sqs_subscriber.py 
+        2017-12-08 02:43:15,871 - kombu-sqs-subscriber - INFO - Start - kombu-sqs-subscriber
+        2017-12-08 02:43:15,871 - kombu-sqs-subscriber - INFO - setup routing
+        2017-12-08 02:43:16,003 - botocore.vendored.requests.packages.urllib3.connectionpool - INFO - Starting new HTTPS connection (1): queue.amazonaws.com
+        2017-12-08 02:43:16,553 - botocore.vendored.requests.packages.urllib3.connectionpool - INFO - Starting new HTTPS connection (1): queue.amazonaws.com
+        2017-12-08 02:43:17,387 - kombu-sqs-subscriber - INFO - kombu-sqs-subscriber - kombu.subscriber queues=test1 consuming with callback=<function handle_message at 0x7f52e3f62950>
+        2017-12-08 02:43:17,609 - kombu-sqs-subscriber - INFO - kombu.subscriber recv msg props=<Message object at 0x7f52d5208c18 with details {'body_length': 120, 'state': 'RECEIVED', 'content_type': 'application/json', 'delivery_tag': 'AQEB1tHiUnAt79FOyJCCOg1vcP8Zx45kK1bHZj0G4A1tzPbnakeq1rtGdn1Z+cTQJ/TutEcYOuLfZk8kxKtLYbd9FnPtgVBjvGrcfVInoGJ66OakAOOuLpMtlan2GSSHR7BNrZsKp4oSDEFx9hMqQefeVAM026KWE9yN/xydcTwytUXc4xT2z9wc/JF9KaQ7QsvCOW4dvWtkDW3Ti0A0iOEAN+ONA9UY9HPh934cAfTGvXQaQBCw4cfKuOiusIlLo4DyzLbxVwzLMp+uROuiyvol3ua4e9sa5B/83HTfgl+Do5hCjhK8+q3TEtwAVbdL8v22PUVoay6Zyf2xBao983Y/PMdc/xT4HoOvaGz5Ps4oc2biPpqKTZRn+YU3fi0GvI6Y', 'properties': {}, 'delivery_info': {'exchange': 'test1', 'routing_key': 'test1'}}> body={'stripe_id': 333, 'product_id': 'DEF', 'account_id': 111, 'subscription_id': 222, 'sent': '2017-12-08T02:43:13.916717'}
+        2017-12-08 02:43:17,628 - kombu-sqs-subscriber - INFO - End - kombu-sqs-subscriber
+        $
+
 Debugging with rabbitmqadmin
 =============================
 
