@@ -3,9 +3,8 @@ from celery import Celery
 from celery import bootsteps
 from kombu import Queue, Exchange, Consumer
 from celery_connectors.utils import ev
-from celery_connectors.log.setup_logging import setup_logging
 
-setup_logging()
+log = logging.getLogger("celery-subscriber")
 
 
 class Subscriber:
@@ -35,7 +34,6 @@ class Subscriber:
 
         self.state = "not_ready"
         self.name = name
-        self.log = logging.getLogger(self.name)
         self.auth_url = auth_url
         self.ssl_options = ssl_options
         self.transport_options = transport_options
@@ -64,12 +62,14 @@ class Subscriber:
 
         self.exchange = None
         if routing_key:
-            self.log.debug("creating Exchange={} topic for rk={}".format(ex_name,
-                                                                         routing_key))
+            log.debug(("creating Exchange={} topic for rk={}")
+                      .format(ex_name,
+                              routing_key))
             self.exchange = Exchange(ex_name, type="topic")
         else:
-            self.log.debug("creating Exchange={} direct".format(ex_name,
-                                                                routing_key))
+            log.debug(("creating Exchange={} direct")
+                      .format(ex_name,
+                              routing_key))
             self.exchange = Exchange(ex_name,
                                      type="direct")
         # end of if/else
@@ -79,17 +79,17 @@ class Subscriber:
 
             new_queue = None
             if routing_key:
-                self.log.debug(("creating Queue={} topic rk={} from Exchange={}")
-                               .format(queue_name,
-                                       routing_key,
-                                       ex_name))
+                log.debug(("creating Queue={} topic rk={} from Exchange={}")
+                          .format(queue_name,
+                                  routing_key,
+                                  ex_name))
                 new_queue = Queue(queue_name,
                                   exchange=self.exchange,
                                   routing_key=routing_key)
             else:
-                self.log.debug(("creating Queue={} direct from Exchange={}")
-                               .format(queue_name,
-                                       ex_name))
+                log.debug(("creating Queue={} direct from Exchange={}")
+                          .format(queue_name,
+                                  ex_name))
                 new_queue = Queue(queue_name, exchange=self.exchange)
             # end of handling queues with direct/topic routing
 
@@ -115,6 +115,11 @@ class Subscriber:
         http://docs.celeryproject.org/en/latest/getting-started/brokers/redis.html#configuration
         """
 
+        if not callback:
+            log.info(("Please pass in a valid callback "
+                      "function or class method"))
+            return
+
         if self.state != "ready":
             if exchange and routing_key:
                 self.setup_routing(exchange, [queue], routing_key)
@@ -123,12 +128,11 @@ class Subscriber:
         # end of initializing for the first time
 
         if not silent:
-            self.log.info(("{} - Subscribed to Exchange={} with "
-                           "routes to queues={} with callback={}")
-                          .format(self.state.upper(),
-                                  self.exchange.name,
-                                  len(self.consume_from_queues),
-                                  callback))
+            log.info(("Subscribed to Exchange={} with "
+                      "routes to queues={} with callback={}")
+                     .format(self.exchange.name,
+                             len(self.consume_from_queues),
+                             callback.__name__))
 
         consume_from_queues = self.consume_from_queues
 

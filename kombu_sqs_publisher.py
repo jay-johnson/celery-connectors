@@ -48,23 +48,27 @@ max_timeout = 43200
 transport_options = {}
 
 if not pub:
-    log.error("Failed to connect to broker={}".format(sqs_auth_url))
+    log.error(("Failed to connect to "
+               "broker={}")
+              .format(sqs_auth_url))
 else:
 
-    log.info("Building message")
-
-    # Now send:
+    # Create the message:
+    now = datetime.datetime.now().isoformat()
     body = {"account_id": 111,
             "subscription_id": 222,
             "stripe_id": 333,
-            "sent": datetime.datetime.now().isoformat(),
+            "created": now,
             "product_id": "DEF"}
 
-    log.info("Sending user conversion event msg={} ex={} rk={}".format(body,
-                                                                       exchange,
-                                                                       routing_key))
+    log.info(("Sending user conversion event "
+              "msg={} ex={} rk={}")
+             .format(body,
+                     exchange,
+                     routing_key))
 
-    send_result = pub.publish(
+    # Publish the message:
+    msg_sent = pub.publish(
         body=body,
         exchange=exchange,
         routing_key=routing_key,
@@ -73,5 +77,7 @@ else:
         retry=True,
         transport_options=transport_options)
 
-    log.info("End - {}".format(name))
-# end of valid or not
+    log.info(("End - {} sent={}")
+             .format(name,
+                     msg_sent))
+# end of valid publisher or not

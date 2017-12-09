@@ -18,7 +18,9 @@ recv_msgs = []
 
 
 def handle_message(body, message):
-    log.info("kombu.subscriber recv msg props={} body={}".format(message, body))
+    log.info(("callback received msg "
+              "body={}")
+             .format(body))
     recv_msgs.append(body)
     message.ack()
 # end of handle_message

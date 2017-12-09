@@ -7,5 +7,6 @@ pw=rabbitmq
 
 echo ""
 echo "Listing Queues broker=${host}:${port}"
+echo ""
 rabbitmqadmin.py --host=${host} --port=${port} --username=${user} --password=${pw} list queues name consumers messages messages_ready messages_unacknowledged
 echo ""

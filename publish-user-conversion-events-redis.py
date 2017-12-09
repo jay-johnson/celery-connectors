@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import logging
+import datetime
 from celery_connectors.utils import ev
 from celery_connectors.log.setup_logging import setup_logging
 from celery_connectors.publisher import Publisher
@@ -28,7 +29,7 @@ serializer = "json"
 #          })
 #
 ssl_options = {}
-app = Publisher("publish-uce",
+app = Publisher("publish-uce-redis",
                 auth_url,
                 ssl_options)
 
@@ -36,23 +37,27 @@ if not app:
     log.error("Failed to connect to broker={}".format(auth_url))
 else:
 
-    log.info("Building message")
-
-    # Now send:
+    # Create the message:
+    now = datetime.datetime.now().isoformat()
     body = {"account_id": 123,
             "subscription_id": 456,
             "stripe_id": 789,
-            "product_id": "ABC"}
+            "product_id": "ABC",
+            "created": now}
 
-    log.info("Sending user conversion event msg={} ex={} rk={}".format(body, exchange_name, routing_key))
+    log.info(("Sending user conversion event "
+              "msg={} ex={} rk={}")
+             .format(body, exchange_name, routing_key))
 
-    send_result = app.publish(
-        body=body,
-        exchange=exchange_name,
-        routing_key=routing_key,
-        queue=queue_name,
-        serializer=serializer,
-        retry=True)
+    # Publish the message:
+    msg_sent = app.publish(body=body,
+                           exchange=exchange_name,
+                           routing_key=routing_key,
+                           queue=queue_name,
+                           serializer=serializer,
+                           retry=True)
 
-    log.info("End - {}".format(name))
+    log.info(("End - {} sent={}")
+             .format(name,
+                     msg_sent))
 # end of valid or not

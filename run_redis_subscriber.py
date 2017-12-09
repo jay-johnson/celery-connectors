@@ -19,7 +19,9 @@ recv_msgs = []
 
 
 def handle_message(body, message):
-    log.info("recv msg props={} body={}".format(message, body))
+    log.info(("callback received msg "
+              "body={}")
+             .format(body))
     recv_msgs.append(body)
     message.ack()
 # end of handle_message
@@ -27,11 +29,14 @@ def handle_message(body, message):
 
 # Initialize Celery application
 ssl_options = {}
+conn_attrs = {"task_default_queue": "celery.redis.sub",
+              "task_default_exchange": "celery.redis.sub"}
 app = Celery()
 sub = Subscriber("redis-subscriber",
                  ev("BROKER_URL", "redis://localhost:6379/0"),
                  app,
-                 ssl_options)
+                 ssl_options,
+                 **conn_attrs)
 
 
 # Now consume:

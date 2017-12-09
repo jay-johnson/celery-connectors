@@ -2,9 +2,8 @@ import socket
 import logging
 from kombu import Connection, Consumer, Queue, Exchange
 from celery_connectors.utils import ev
-from celery_connectors.log.setup_logging import setup_logging
 
-setup_logging()
+log = logging.getLogger("kombu-subscriber")
 
 
 class KombuSubscriber:
@@ -12,7 +11,6 @@ class KombuSubscriber:
     def __init__(self,
                  name=ev("SUBSCRIBER_NAME", "kombu-subscriber"),
                  auth_url=ev("BROKER_URL", "redis://localhost:6379/0"),
-                 app=None,
                  ssl_options={}):
 
         """
@@ -31,7 +29,6 @@ class KombuSubscriber:
 
         self.state = "not_ready"
         self.name = name
-        self.log = logging.getLogger(self.name)
         self.auth_url = auth_url
         self.ssl_options = ssl_options
 
@@ -69,10 +66,12 @@ class KombuSubscriber:
         self.queue = None
 
         if self.routing_key:
-            self.log.debug("creating Exchange={} topic for rk={}".format(self.exchange_name, self.routing_key))
+            log.debug(("creating Exchange={} topic for rk={}")
+                      .format(self.exchange_name, self.routing_key))
             self.exchange = Exchange(self.exchange_name, type="topic")
         else:
-            self.log.debug("creating Exchange={} direct".format(self.exchange_name, self.routing_key))
+            log.debug(("creating Exchange={} direct")
+                      .format(self.exchange_name, self.routing_key))
             self.exchange = Exchange(self.exchange_name, type="direct")
         # end of if/else
 
@@ -81,15 +80,15 @@ class KombuSubscriber:
 
             new_queue = None
             if self.routing_key:
-                self.log.debug(("creating Queue={} topic rk={} from Exchange={}")
-                               .format(queue_name,
-                                       self.routing_key,
-                                       self.exchange_name))
+                log.debug(("creating Queue={} topic rk={} from Exchange={}")
+                          .format(queue_name,
+                                  self.routing_key,
+                                  self.exchange_name))
                 new_queue = Queue(queue_name, exchange=self.exchange, routing_key=self.routing_key)
             else:
-                self.log.debug(("creating Queue={} direct from Exchange={}")
-                               .format(queue_name,
-                                       self.exchange_name))
+                log.debug(("creating Queue={} direct from Exchange={}")
+                          .format(queue_name,
+                                  self.exchange_name))
                 new_queue = Queue(queue_name, exchange=self.exchange)
             # end of handling queues with direct/topic routing
 
@@ -117,25 +116,34 @@ class KombuSubscriber:
         self.conn = Connection(self.auth_url,
                                heartbeat=heartbeat,
                                transport_options=transport_options)
+
         self.channel = self.conn.channel()
+
         self.process_message_callback = process_message_callback
-        self.log.debug(("creating kombu.Consumer broker={} ssl={} ex={} rk={} queue={} serializer={}")
-                       .format(self.auth_url,
-                               self.ssl_options,
-                               self.exchange_name,
-                               self.routing_key,
-                               self.queue_name,
-                               self.serializer))
+
+        log.debug(("creating kombu.Consumer "
+                   "broker={} ssl={} ex={} rk={} "
+                   "queue={} serializer={}")
+                  .format(self.auth_url,
+                          self.ssl_options,
+                          self.exchange_name,
+                          self.routing_key,
+                          self.queue_name,
+                          self.serializer))
 
         self.consumer = Consumer(self.conn,
                                  queues=self.consume_from_queues,
                                  callbacks=[self.process_message_callback],
                                  accept=["{}".format(self.serializer)])
 
-        self.log.debug("creating kombu.Exchange={}".format(self.exchange))
+        log.debug(("creating kombu.Exchange={}")
+                  .format(self.exchange))
+
         self.consumer.declare()
 
-        self.log.debug("creating kombu.Queue={}".format(self.queue_name))
+        log.debug(("creating kombu.Queue={}")
+                  .format(self.queue_name))
+
         self.queue.maybe_bind(self.conn)
         self.queue.declare()
 
@@ -161,7 +169,7 @@ class KombuSubscriber:
                 routing_key=None,
                 heartbeat=60,
                 serializer="application/json",
-                time_to_wait=1.0,
+                time_to_wait=5.0,
                 forever=False,
                 silent=False,
                 transport_options={},
@@ -175,9 +183,14 @@ class KombuSubscriber:
         http://docs.celeryproject.org/en/latest/getting-started/brokers/redis.html#configuration
         """
 
+        if not callback:
+            log.info(("Please pass in a valid callback "
+                      "function or class method"))
+            return
+
         if self.state != "ready" or queue != self.queue_name:
             if not silent:
-                self.log.info("setup routing")
+                log.info("setup routing")
             if exchange and routing_key:
                 self.setup_routing(exchange,
                                    [queue],
@@ -199,25 +212,28 @@ class KombuSubscriber:
         while not_done:
 
             if not forever and not silent:
-                self.log.info(("{} - kombu.subscriber queues={} consuming with callback={}")
-                              .format(self.name,
-                                      self.queue_name,
-                                      callback))
+                log.info(("{} - kombu.subscriber queues={} "
+                          "consuming with callback={}")
+                         .format(self.name,
+                                 self.queue_name,
+                                 callback.__name__))
 
             try:
                 self.consumer.consume()
-                self.log.debug("draining events time_to_wait={}".format(self.drain_time))
-                self.conn.drain_events(timeout=self.drain_time)
+                log.debug(("draining events time_to_wait={}")
+                          .format(time_to_wait))
+                self.conn.drain_events(timeout=time_to_wait)
             except socket.timeout as t:
-                self.log.debug(("detected socket.timeout - "
-                                "running heartbeat check={}")
-                               .format(t))
+                log.debug(("detected socket.timeout - "
+                           "running heartbeat check={}")
+                          .format(t))
                 self.conn.heartbeat_check()
             except Exception as e:
-                self.log.info(("{} - kombu.subscriber consume hit ex={} queue={}")
-                              .format(self.name,
-                                      e,
-                                      self.queue_name))
+                log.info(("{} - kombu.subscriber consume hit "
+                          "exception={} queue={}")
+                         .format(self.name,
+                                 e,
+                                 self.queue_name))
 
             not_done = forever
         # end of hearbeat and event checking

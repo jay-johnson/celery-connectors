@@ -56,7 +56,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "celery_connectors"))
 setup(
     name="celery-connectors",
     cmdclass={"build_py": build_py},
-    version="1.0.12",
+    version="1.0.13",
     description="Celery Headless Connectors",
     long_description="Running headless Celery bootsteps to process " +
     "json or pickled messages from Redis, RabbitMQ or AWS SQS. " +
@@ -95,6 +95,10 @@ setup(
         "./publish-user-conversion-events-rabbitmq.py",
         "./start-kombu-message-processor-redis.py",
         "./start-kombu-message-processor-rabbitmq.py",
+        "./run_rabbitmq_publisher.py",
+        "./run_redis_publisher.py",
+        "./kombu_rabbitmq_subscriber.py",
+        "./kombu_redis_subscriber.py",
         "./kombu_sqs_publisher.py",
         "./kombu_sqs_subscriber.py",
         "./start-redis-and-rabbitmq.sh",

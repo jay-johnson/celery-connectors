@@ -1,7 +1,7 @@
 Celery Headless Connectors
 ==========================
 
-Celery_ is a great framework for processing messages in a backend message queue service like SQS, Redis or RabbitMQ. If you have a queue system with json/pickled messages, and if you do not want to track the internal celery task results, then hopefully this repository will help you out.
+Celery_ is a great framework for processing messages in a backend message queue service like Redis or RabbitMQ. If you have a queue system with json/pickled messages, and if you do not want to track the internal celery task results, then hopefully this repository will help you out.
 
 .. _Celery: http://docs.celeryproject.org/en/latest/
 
@@ -53,184 +53,306 @@ How do I get started?
 
     ::
 
-        $ docker ps
+        docker ps
         CONTAINER ID        IMAGE                       COMMAND                  CREATED             STATUS              PORTS                                                                                                       NAMES
         68f3b6e71563        redis:4.0.5-alpine          "docker-entrypoint..."   34 seconds ago      Up 33 seconds       0.0.0.0:6379->6379/tcp, 0.0.0.0:16379->16379/tcp                                                            celredis1
         3fd938f4d5e0        rabbitmq:3.6.6-management   "docker-entrypoint..."   23 hours ago        Up 33 seconds       4369/tcp, 5671/tcp, 0.0.0.0:5672->5672/tcp, 0.0.0.0:15672->15672/tcp, 15671/tcp, 0.0.0.0:25672->25672/tcp   celrabbit1
-        $ 
-
     
 Redis Message Processing Example
 --------------------------------
 
 This example uses Celery bootsteps (http://docs.celeryproject.org/en/latest/userguide/extending.html) to run a standalone, headless subscriber that consumes messages from a Redis key which emulates a RabbitMQ queue. Kombu publishes the message to the Redis key.
 
+#.  Check that the Redis has no keys
+
+    ::
+
+        redis-cli
+        127.0.0.1:6379> keys *
+        (empty list or set)
+        127.0.0.1:6379> 
+
 #.  Publish a message
 
     ::
 
-        $ ./run_redis_publisher.py
-        2017-12-03 00:41:21,323 - run-redis-publisher - INFO - Start - run-redis-publisher
-        2017-12-03 00:41:21,353 - run-redis-publisher - INFO - Building message
-        2017-12-03 00:41:21,353 - run-redis-publisher - INFO - Sending msg={'account_id': 123} ex=Exchange reporting.accounts(direct) rk=reporting.accounts
-        2017-12-03 00:41:21,355 - run-redis-publisher - INFO - End - run-redis-publisher
-        $
+        run_redis_publisher.py 
+        2017-12-09 08:20:04,026 - run-redis-publisher - INFO - Start - run-redis-publisher
+        2017-12-09 08:20:04,027 - run-redis-publisher - INFO - Sending msg={'account_id': 123, 'created': '2017-12-09T08:20:04.027159'} ex=reporting.accounts rk=reporting.accounts
+        2017-12-09 08:20:04,050 - redis-publisher - INFO - SEND - exch=reporting.accounts rk=reporting.accounts
+        2017-12-09 08:20:04,052 - run-redis-publisher - INFO - End - run-redis-publisher sent=True
 
 #.  Consume messages using the subscriber module
 
     ::
 
-        celery worker -A run_redis_subscriber --loglevel=DEBUG
+        celery worker -A run_redis_subscriber --loglevel=INFO
 
-#.  Run the publisher module again and watch the celery log
+#.  Confirm the Celery worker received the message
 
     ::
 
-        [2017-12-03 00:42:11,184: INFO/MainProcess] recv msg props=<Message object at 0x7fbb01c81048 with details {'properties': {}, 'state': 'RECEIVED', 'delivery_info': {'routing_key': 'reporting.accounts', 'exchange': 'reporting.accounts'}, 'body_length': 19, 'delivery_tag': 'e96600be-d9de-42d7-a9cd-729b475a6a92', 'content_type': 'application/json'}> body={'account_id': 123}
-        [2017-12-03 00:42:11,186: INFO/MainProcess] recv msg props=<Message object at 0x7fbb01c810d8 with details {'properties': {}, 'state': 'RECEIVED', 'delivery_info': {'routing_key': 'reporting.accounts', 'exchange': 'reporting.accounts'}, 'body_length': 19, 'delivery_tag': '8958339d-4324-4af5-b77e-241d41f5ddf3', 'content_type': 'application/json'}> body={'account_id': 123}
-        [2017-12-03 00:42:21,019: INFO/MainProcess] recv msg props=<Message object at 0x7fbb01c81168 with details {'properties': {}, 'state': 'RECEIVED', 'delivery_info': {'routing_key': 'reporting.accounts', 'exchange': 'reporting.accounts'}, 'body_length': 19, 'delivery_tag': '5204aa96-788c-472d-835c-ab66bfe1e0da', 'content_type': 'application/json'}> body={'account_id': 123}
-        [2017-12-03 00:42:22,675: INFO/MainProcess] recv msg props=<Message object at 0x7fbb01c810d8 with details {'properties': {}, 'state': 'RECEIVED', 'delivery_info': {'routing_key': 'reporting.accounts', 'exchange': 'reporting.accounts'}, 'body_length': 19, 'delivery_tag': 'e065c120-ada0-458b-b024-18c28a36172b', 'content_type': 'application/json'}> body={'account_id': 123}
+        2017-12-09 08:20:08,221: INFO callback received msg body={u'account_id': 123, u'created': u'2017-12-09T08:20:04.027159'}
 
 #.  Look at the Redis keys
 
     ::
 
-        $ redis-cli
+        redis-cli
         127.0.0.1:6379> keys *
-        1) "_kombu.binding.reporting.accounts"
-        2) "_kombu.binding.celery.pidbox"
-        3) "unacked_mutex"
-        4) "_kombu.binding.celery"
-        5) "_kombu.binding.celeryev"
+        1) "_kombu.binding.celeryev"
+        2) "_kombu.binding.celery"
+        3) "_kombu.binding.celery.pidbox"
+        4) "_kombu.binding.reporting.accounts"
+        5) "unacked_mutex"
         127.0.0.1:6379> 
-        $ 
-
 
 RabbitMQ Message Processing Example
 -----------------------------------
 
-This example uses Celery bootsteps (http://docs.celeryproject.org/en/latest/userguide/extending.html) to run a standalone, headless subscriber that consumes routed messages. It will set up a RabbitMQ topic exchange with a queue that is bound using a routing key. Once the entities are available in RabbitMQ, Kombu publishes the message to the Exchange and RabbitMQ provides the messaging facility to route the messages to the subscribed celery workers' Queue.
+This example uses Celery bootsteps (http://docs.celeryproject.org/en/latest/userguide/extending.html) to run a standalone, headless subscriber that consumes routed messages. It will set up a RabbitMQ topic exchange with a queue that is bound using a routing key. Once the entities are available in RabbitMQ, Kombu publishes the message to the exchange and RabbitMQ provides the messaging facility to route the messages to the subscribed celery workers' queue.
+
+#.  List the Queues
+
+    ::
+
+        list-queues.sh 
+
+        Listing Queues broker=localhost:15672
+        No items
+
 
 #.  Publish a message
 
     ::
 
-        $ ./run_rabbitmq_publisher.py
-        2017-12-03 00:45:02,783 - run-rabbitmq-publisher - INFO - Start - run-rabbitmq-publisher
-        2017-12-03 00:45:02,800 - amqp - DEBUG - Start from server, version: 0.9, properties: {'product': 'RabbitMQ', 'cluster_name': 'rabbit@rabbit1', 'platform': 'Erlang/OTP', 'copyright': 'Copyright (C) 2007-2016 Pivotal Software, Inc.', 'information': 'Licensed under the MPL.  See http://www.rabbitmq.com/', 'capabilities': {'direct_reply_to': True, 'connection.blocked': True, 'per_consumer_qos': True, 'exchange_exchange_bindings': True, 'publisher_confirms': True, 'consumer_cancel_notify': True, 'authentication_failure_close': True, 'consumer_priorities': True, 'basic.nack': True}, 'version': '3.6.6'}, mechanisms: [b'AMQPLAIN', b'PLAIN'], locales: ['en_US']
-        2017-12-03 00:45:02,803 - amqp - DEBUG - using channel_id: 1
-        2017-12-03 00:45:02,806 - amqp - DEBUG - Channel open
-        2017-12-03 00:45:02,807 - amqp - DEBUG - using channel_id: 2
-        2017-12-03 00:45:02,813 - amqp - DEBUG - Channel open
-        2017-12-03 00:45:02,816 - run-rabbitmq-publisher - INFO - Building message
-        2017-12-03 00:45:02,816 - run-rabbitmq-publisher - INFO - Sending msg={'account_id': 123} ex=Exchange reporting(topic) rk=reporting.accounts
-        2017-12-03 00:45:02,818 - run-rabbitmq-publisher - INFO - End - run-rabbitmq-publisher
-        $
+        run_rabbitmq_publisher.py 
+        2017-12-09 11:00:54,419 - run-rabbitmq-publisher - INFO - Start - run-rabbitmq-publisher
+        2017-12-09 11:00:54,419 - run-rabbitmq-publisher - INFO - Sending msg={'account_id': 456, 'created': '2017-12-09T11:00:54.419829'} ex=reporting rk=reporting.accounts
+        2017-12-09 11:00:54,462 - rabbitmq-publisher - INFO - SEND - exch=reporting rk=reporting.accounts
+        2017-12-09 11:00:54,463 - run-rabbitmq-publisher - INFO - End - run-rabbitmq-publisher sent=True
 
-#.  Confirm the message is ready in the RabbitMQ queue
+#.  Confirm the message is ready in the RabbitMQ Queue
 
     Note the ``messages`` and ``messages_ready`` count increased while the ``messages_unacknowledged`` did not. Which is because we have not started the subscriber to process ready messages in the ``reporting.accounts`` queue.
 
     ::
 
-        $ list-queues.sh
+        list-queues.sh 
 
-        Listing Queues broker=localhost:15672
-        +--------------------+-----------+----------+----------------+-------------------------+
-        |        name        | consumers | messages | messages_ready | messages_unacknowledged |
-        +--------------------+-----------+----------+----------------+-------------------------+
-        | celery             | 0         | 0        | 0              | 0                       |
-        | reporting.accounts | 0         | 1        | 1              | 0                       |
-        +--------------------+-----------+----------+----------------+-------------------------+
+    Listing Queues broker=localhost:15672
+
+    +--------------------+-----------+----------+----------------+-------------------------+
+    |        name        | consumers | messages | messages_ready | messages_unacknowledged |
+    +--------------------+-----------+----------+----------------+-------------------------+
+    | reporting.accounts | 0         | 1        | 1              | 0                       |
+    +--------------------+-----------+----------+----------------+-------------------------+
+
+#.  List the Exchanges
+
+    ::
+
+        list-exchanges.sh 
+
+    Listing Exchanges broker=localhost:15672
+
+    +--------------------+---------+
+    |        name        |  type   |
+    +--------------------+---------+
+    |                    | direct  |
+    +--------------------+---------+
+    | amq.direct         | direct  |
+    +--------------------+---------+
+    | amq.fanout         | fanout  |
+    +--------------------+---------+
+    | amq.headers        | headers |
+    +--------------------+---------+
+    | amq.match          | headers |
+    +--------------------+---------+
+    | amq.rabbitmq.log   | topic   |
+    +--------------------+---------+
+    | amq.rabbitmq.trace | topic   |
+    +--------------------+---------+
+    | amq.topic          | topic   |
+    +--------------------+---------+
+    | reporting          | topic   |
+    +--------------------+---------+
 
 #.  Consume that message by starting up the producer celery module
 
     ::
 
-        celery worker -A run_rabbitmq_subscriber --loglevel=DEBUG
+        celery worker -A run_rabbitmq_subscriber --loglevel=INFO
 
-#.  Confirm the worker's logs show the message was received (recv)
-
-    ::
-
-        [2017-12-03 00:46:38,565: INFO/MainProcess] recv msg props=<Message object at 0x7fdc75c37dc8 with details {'content_type': 'application/json', 'properties': {}, 'state': 'RECEIVED', 'body_length': 19, 'delivery_info': {'routing_key': 'reporting.accounts', 'exchange': 'reporting'}, 'delivery_tag': 1}> body={'account_id': 123}
-        [2017-12-03 00:46:38,565: INFO/MainProcess] celery@localhost.localdomain ready.
-
-#.  Verify the message is no longer in the queue
+#.  Confirm the worker's logs show the message was received
 
     ::
 
-        $ list-queues.sh
+        2017-12-09 11:02:38,608: INFO callback received msg body={u'account_id': 456, u'created': u'2017-12-09T11:00:54.419829'}
 
-        Listing Queues broker=localhost:15672
-        +-----------------------------------------------+-----------+----------+----------------+-------------------------+
-        |                     name                      | consumers | messages | messages_ready | messages_unacknowledged |
-        +-----------------------------------------------+-----------+----------+----------------+-------------------------+
-        | celery                                        | 1         | 0        | 0              | 0                       |
-        | celery@localhost.localdomain.celery.pidbox    | 1         | 0        | 0              | 0                       |
-        | celeryev.935809b9-526a-4d48-a0f9-b8f5c675dbec | 1         | 0        | 0              | 0                       |
-        | reporting.accounts                            | 1         | 0        | 0              | 0                       |
-        +-----------------------------------------------+-----------+----------+----------------+-------------------------+
+#.  Verify the message is no longer in the Queue and Celery is connected as a consumer
+
+    With the Celery RabbitMQ worker still running, in a new terminal list the queues.
+
+    ::
+        
+        list-queues.sh
+
+    Listing Queues broker=localhost:15672
+
+    +-----------------------------------------------+-----------+----------+----------------+-------------------------+
+    |                     name                      | consumers | messages | messages_ready | messages_unacknowledged |
+    +-----------------------------------------------+-----------+----------+----------------+-------------------------+
+    | celery.rabbit.sub                             | 1         | 0        | 0              | 0                       |
+    +-----------------------------------------------+-----------+----------+----------------+-------------------------+
+    | celery@localhost.localdomain.celery.pidbox    | 1         | 0        | 0              | 0                       |
+    +-----------------------------------------------+-----------+----------+----------------+-------------------------+
+    | celeryev.788d17cb-de2d-444e-9a02-2b75fe76298c | 1         | 0        | 0              | 0                       |
+    +-----------------------------------------------+-----------+----------+----------------+-------------------------+
+    | reporting.accounts                            | 1         | 0        | 0              | 0                       |
+    +-----------------------------------------------+-----------+----------+----------------+-------------------------+
+
+#.  Stop the Celery RabbitMQ Subscriber worker with ``ctrl + c``
+
+    ::
+
+        2017-12-09 11:02:39,678: INFO celery@localhost.localdomain ready.
+        ^C
+        worker: Hitting Ctrl+C again will terminate all running tasks!
+
+        worker: Warm shutdown (MainProcess)
+
+#.  List the Queues after shutting down the Celery RabbitMQ Subscriber
+
+    Notice the ``reporting.accounts`` queue is still present even after stopping the worker.
+
+    ::
+
+        list-queues.sh 
+
+    Listing Queues broker=localhost:15672
+
+    +--------------------+-----------+----------+----------------+-------------------------+
+    |        name        | consumers | messages | messages_ready | messages_unacknowledged |
+    +--------------------+-----------+----------+----------------+-------------------------+
+    | celery.rabbit.sub  | 0         | 0        | 0              | 0                       |
+    +--------------------+-----------+----------+----------------+-------------------------+
+    | reporting.accounts | 0         | 0        | 0              | 0                       |
+    +--------------------+-----------+----------+----------------+-------------------------+
+
+#.  Inspect the Bindings for examining how RabbitMQ routes messages from Exchanges to Queues
+
+    ::
+
+        list-bindings.sh 
+
+    Listing Bindings broker=localhost:15672
+
+    +-------------------+--------------------+--------------------+
+    |      source       |    destination     |    routing_key     |
+    +-------------------+--------------------+--------------------+
+    |                   | celery.rabbit.sub  | celery.rabbit.sub  |
+    +-------------------+--------------------+--------------------+
+    |                   | reporting.accounts | reporting.accounts |
+    +-------------------+--------------------+--------------------+
+    | celery.rabbit.sub | celery.rabbit.sub  | celery.rabbit.sub  |
+    +-------------------+--------------------+--------------------+
+    | reporting         | reporting.accounts | reporting.accounts |
+    +-------------------+--------------------+--------------------+
 
 Redis Kombu Subscriber
 ======================
 
 If you do not want to use Celery, you can use the ``KombuSubscriber`` class to process messages. This class will wait for a configurable amount of seconds to consume a single message from the subscribed queue and then stop processing.
 
+#.  Check the Redis keys
+
+    ::
+
+        redis-cli
+        127.0.0.1:6379> keys *
+        1) "_kombu.binding.reporting.accounts"
+        2) "_kombu.binding.celery.redis.sub"
+        127.0.0.1:6379> 
+
 #.  Run the Redis Publisher
 
     ::
 
-        $ ./run_redis_publisher.py 
-        2017-12-03 17:26:12,896 - run-redis-publisher - INFO - Start - run-redis-publisher
-        2017-12-03 17:26:12,896 - run-redis-publisher - INFO - Building message
-        2017-12-03 17:26:12,896 - run-redis-publisher - INFO - Sending msg={'account_id': 123} ex=reporting.accounts rk=reporting.accounts
-        2017-12-03 17:26:12,924 - redis-publisher - INFO - READY - PUB - exch=reporting.accounts queue=<Queue reporting.accounts -> <Exchange reporting.accounts(topic) bound to chan:2> -> reporting.accounts bound to chan:2> body={'account_id': 123}
-        2017-12-03 17:26:12,927 - run-redis-publisher - INFO - End - run-redis-publisher
-        $
+        run_redis_publisher.py 
+        2017-12-09 11:46:39,743 - run-redis-publisher - INFO - Start - run-redis-publisher
+        2017-12-09 11:46:39,743 - run-redis-publisher - INFO - Sending msg={'account_id': 123, 'created': '2017-12-09T11:46:39.743636'} ex=reporting.accounts rk=reporting.accounts
+        2017-12-09 11:46:39,767 - redis-publisher - INFO - SEND - exch=reporting.accounts rk=reporting.accounts
+        2017-12-09 11:46:39,770 - run-redis-publisher - INFO - End - run-redis-publisher sent=True
 
 #.  Run the Redis Kombu Subscriber
 
-    By default, this will wait for a single message message to be delivered within 10 seconds.
+    By default, this will wait for a single message to be delivered within 10 seconds.
 
     ::
 
-        $ ./kombu_redis_subscriber.py 
-        2017-12-03 17:26:08,854 - kombu-redis-subscriber - INFO - Start - kombu-redis-subscriber
-        2017-12-03 17:26:08,884 - kombu-redis-subscriber - INFO - kombu-redis-subscriber - kombu.subscriber queues=reporting.accounts wait=10.0 callback=<function handle_message at 0x7f70762c7950>
-        2017-12-03 17:26:12,927 - kombu-redis-subscriber - INFO - kombu.subscriber recv msg props=<Message object at 0x7f7068151af8 with details {'state': 'RECEIVED', 'delivery_info': {'exchange': 'reporting.accounts', 'routing_key': 'reporting.accounts'}, 'delivery_tag': '0108f196-71e6-4511-86eb-945e46e0c5ed', 'body_length': 19, 'properties': {}, 'content_type': 'application/json'}> body={'account_id': 123}
-        2017-12-03 17:26:12,928 - kombu-redis-subscriber - INFO - End - kombu-redis-subscriber
-        $
+        kombu_redis_subscriber.py 
+        2017-12-09 11:47:58,798 - kombu-redis-subscriber - INFO - Start - kombu-redis-subscriber
+        2017-12-09 11:47:58,798 - kombu-redis-subscriber - INFO - setup routing
+        2017-12-09 11:47:58,822 - kombu-redis-subscriber - INFO - kombu-redis-subscriber - kombu.subscriber queues=reporting.accounts consuming with callback=handle_message
+        2017-12-09 11:47:58,823 - kombu-redis-subscriber - INFO - callback received msg body={u'account_id': 123, u'created': u'2017-12-09T11:46:39.743636'}
+        2017-12-09 11:47:58,824 - kombu-redis-subscriber - INFO - End - kombu-redis-subscriber
 
+#.  Check the Redis keys
+
+    Nothing should have changed:
+
+    ::
+
+        127.0.0.1:6379> keys *
+        1) "_kombu.binding.reporting.accounts"
+        2) "_kombu.binding.celery.redis.sub"
+        127.0.0.1:6379> 
 
 RabbitMQ Kombu Subscriber
 =========================
 
 If you do not want to use Celery, you can use the ``KombuSubscriber`` class to process messages. This class will wait for a configurable amount of seconds to consume a single message from the subscribed queue and then stop processing.
 
-#.  Run the RabbitMQ Subscriber
+#.  List the Queues
 
-    Please note this output assumes there are no messages in the queue already from a previous test
+    If the docker containers are still running the previous RabbitMQ pub/sub test will still have the queues, exchanges and bindings still left over. If not then skip this step.
 
     ::
 
-        $ ./kombu_rabbitmq_subscriber.py 
-        2017-12-03 17:23:09,067 - kombu-rabbitmq-subscriber - INFO - Start - kombu-rabbitmq-subscriber
-        2017-12-03 17:23:09,091 - kombu-rabbitmq-subscriber - INFO - kombu-rabbitmq-subscriber - kombu.subscriber queues=reporting.accounts wait=10.0 callback=<function handle_message at 0x7f50f8599950>
-        2017-12-03 17:23:19,115 - kombu-rabbitmq-subscriber - INFO - End - kombu-rabbitmq-subscriber
-        $
+        list-queues.sh 
+
+    Listing Queues broker=localhost:15672
+
+    +--------------------+-----------+----------+----------------+-------------------------+
+    |        name        | consumers | messages | messages_ready | messages_unacknowledged |
+    +--------------------+-----------+----------+----------------+-------------------------+
+    | celery.rabbit.sub  | 0         | 0        | 0              | 0                       |
+    +--------------------+-----------+----------+----------------+-------------------------+
+    | reporting.accounts | 0         | 0        | 0              | 0                       |
+    +--------------------+-----------+----------+----------------+-------------------------+
+
+#.  Run the RabbitMQ Subscriber
+
+    Please note this output assumes there are no messages in the queue already from a previous test. It will wait for 10 seconds before stopping.
+
+    ::
+
+        kombu_rabbitmq_subscriber.py 
+        2017-12-09 11:53:56,948 - kombu-rabbitmq-subscriber - INFO - Start - kombu-rabbitmq-subscriber
+        2017-12-09 11:53:56,948 - kombu-rabbitmq-subscriber - INFO - setup routing
+        2017-12-09 11:53:56,973 - kombu-rabbitmq-subscriber - INFO - kombu-rabbitmq-subscriber - kombu.subscriber queues=reporting.accounts consuming with callback=handle_message
+        2017-12-09 11:54:06,975 - kombu-rabbitmq-subscriber - INFO - End - kombu-rabbitmq-subscriber
 
 #.  Run the RabbitMQ Publisher
 
     ::
 
-        $ ./run_rabbitmq_publisher.py 
-        2017-12-03 17:23:24,026 - run-rabbitmq-publisher - INFO - Start - run-rabbitmq-publisher
-        2017-12-03 17:23:24,028 - run-rabbitmq-publisher - INFO - Building message
-        2017-12-03 17:23:24,028 - run-rabbitmq-publisher - INFO - Sending msg={'account_id': 123} ex=reporting rk=reporting.accounts
-        2017-12-03 17:23:24,047 - rabbitmq-publisher - INFO - READY - PUB - exch=reporting queue=<Queue reporting.accounts -> <Exchange reporting(topic) bound to chan:2> -> reporting.accounts bound to chan:2> body={'account_id': 123}
-        2017-12-03 17:23:24,048 - run-rabbitmq-publisher - INFO - End - run-rabbitmq-publisher
-        $
+        run_rabbitmq_publisher.py 
+        2017-12-09 11:56:42,793 - run-rabbitmq-publisher - INFO - Start - run-rabbitmq-publisher
+        2017-12-09 11:56:42,793 - run-rabbitmq-publisher - INFO - Sending msg={'account_id': 456, 'created': '2017-12-09T11:56:42.793819'} ex=reporting rk=reporting.accounts
+        2017-12-09 11:56:42,812 - rabbitmq-publisher - INFO - SEND - exch=reporting rk=reporting.accounts
+        2017-12-09 11:56:42,814 - run-rabbitmq-publisher - INFO - End - run-rabbitmq-publisher sent=True
 
 #.  Run the RabbitMQ Kombu Subscriber
 
@@ -238,15 +360,15 @@ If you do not want to use Celery, you can use the ``KombuSubscriber`` class to p
 
     ::
 
-        $ ./kombu_rabbitmq_subscriber.py 
-        2017-12-03 17:23:22,132 - kombu-rabbitmq-subscriber - INFO - Start - kombu-rabbitmq-subscriber
-        2017-12-03 17:23:22,157 - kombu-rabbitmq-subscriber - INFO - kombu-rabbitmq-subscriber - kombu.subscriber queues=reporting.accounts wait=10.0 callback=<function handle_message at 0x7f1a5d4c4950>
-        2017-12-03 17:23:24,049 - kombu-rabbitmq-subscriber - INFO - kombu.subscriber recv msg props=<Message object at 0x7f1a4f602708 with details {'state': 'RECEIVED', 'content_type': 'application/json', 'delivery_info': {'exchange': 'reporting', 'routing_key': 'reporting.accounts'}, 'body_length': 19, 'delivery_tag': 1, 'properties': {}}> body={'account_id': 123}
-        2017-12-03 17:23:24,049 - kombu-rabbitmq-subscriber - INFO - End - kombu-rabbitmq-subscriber
-        $
+        kombu_rabbitmq_subscriber.py 
+        2017-12-09 11:57:07,047 - kombu-rabbitmq-subscriber - INFO - Start - kombu-rabbitmq-subscriber
+        2017-12-09 11:57:07,047 - kombu-rabbitmq-subscriber - INFO - setup routing
+        2017-12-09 11:57:07,103 - kombu-rabbitmq-subscriber - INFO - kombu-rabbitmq-subscriber - kombu.subscriber queues=reporting.accounts consuming with callback=handle_message
+        2017-12-09 11:57:07,104 - kombu-rabbitmq-subscriber - INFO - callback received msg body={u'account_id': 456, u'created': u'2017-12-09T11:56:42.793819'}
+        2017-12-09 11:57:07,104 - kombu-rabbitmq-subscriber - INFO - End - kombu-rabbitmq-subscriber
 
-Running a long-running Redis Message Processor
-==============================================
+Running a Redis Message Processor
+=================================
 
 This will simulate setting up a processor that handles user conversion events using a Redis server.
 
@@ -254,9 +376,11 @@ This will simulate setting up a processor that handles user conversion events us
 
     ::
 
-        $ ./start-kombu-message-processor-redis.py 
-        2017-12-03 23:21:55,741 - loader-name - INFO - Start - msg-proc
-        2017-12-03 23:21:55,741 - msg-proc - INFO - msg-proc START - consume_queue=user.events.conversions rk=None
+        start-kombu-message-processor-redis.py 
+        2017-12-09 12:09:14,329 - loader-name - INFO - Start - msg-proc
+        2017-12-09 12:09:14,329 - msg-proc - INFO - msg-proc START - consume_queue=user.events.conversions rk=None
+        2017-12-09 12:09:14,329 - msg-sub - INFO - setup routing
+        2017-12-09 12:09:14,351 - msg-sub - INFO - msg-sub - kombu.subscriber queues=user.events.conversions consuming with callback=process_message
 
 #.  Publish a User Conversion Event
     
@@ -264,21 +388,31 @@ This will simulate setting up a processor that handles user conversion events us
 
     ::
 
-        $ ./publish-user-conversion-events-redis.py 
-        2017-12-03 23:21:58,828 - publish-user-conversion-events - INFO - Start - publish-user-conversion-events
-        2017-12-03 23:21:58,829 - publish-user-conversion-events - INFO - Building message
-        2017-12-03 23:21:58,829 - publish-user-conversion-events - INFO - Sending user conversion event msg={'account_id': 123, 'product_id': 'ABC', 'stripe_id': 789, 'subscription_id': 456} ex=user.events rk=user.events.conversions
-        2017-12-03 23:21:58,858 - publish-uce - INFO - READY - PUB - exch=user.events queue=<Queue user.events.conversions -> <Exchange user.events(topic) bound to chan:2> -> user.events.conversions bound to chan:2> body={'account_id': 123, 'product_id': 'ABC', 'stripe_id': 789, 'subscription_id': 456}
-        2017-12-03 23:21:58,860 - publish-user-conversion-events - INFO - End - publish-user-conversion-events
-        $
+        publish-user-conversion-events-redis.py 
+        2017-12-09 12:09:16,557 - publish-user-conversion-events - INFO - Start - publish-user-conversion-events
+        2017-12-09 12:09:16,558 - publish-user-conversion-events - INFO - Sending user conversion event msg={'subscription_id': 456, 'created': '2017-12-09T12:09:16.558462', 'stripe_id': 789, 'account_id': 123, 'product_id': 'ABC'} ex=user.events rk=user.events.conversions
+        2017-12-09 12:09:16,582 - publish-uce-redis - INFO - SEND - exch=user.events rk=user.events.conversions
+        2017-12-09 12:09:16,585 - publish-user-conversion-events - INFO - End - publish-user-conversion-events sent=True
 
 #.  Confirm the Processor handled the conversion event
 
     ::
 
-        2017-12-03 23:21:58,861 - msg-proc - INFO - msg-proc proc start - msg props=<Message object at 0x7f2726ead288 with details {'delivery_info': {'routing_key': 'user.events.conversions', 'exchange': 'user.events'}, 'delivery_tag': 'cecfd467-729a-45a3-abf6-a7f9714ba5d2', 'state': 'RECEIVED', 'properties': {}, 'body_length': 82, 'content_type': 'application/json'}> body={'product_id': 'ABC', 'subscription_id': 456, 'stripe_id': 789, 'account_id': 123}
-        2017-12-03 23:21:58,861 - msg-proc - INFO - No auto-caching or pub-hook set exchange=None
-        2017-12-03 23:21:58,862 - msg-proc - INFO - msg-proc proc done - msg props=<Message object at 0x7f2726ead288 with details {'delivery_info': {'routing_key': 'user.events.conversions', 'exchange': 'user.events'}, 'delivery_tag': 'cecfd467-729a-45a3-abf6-a7f9714ba5d2', 'state': 'ACK', 'properties': {}, 'body_length': 82, 'content_type': 'application/json'}> body={'product_id': 'ABC', 'subscription_id': 456, 'stripe_id': 789, 'account_id': 123}
+        2017-12-09 12:09:16,587 - msg-proc - INFO - msg-proc proc start - msg body={u'subscription_id': 456, u'product_id': u'ABC', u'stripe_id': 789, u'account_id': 123, u'created': u'2017-12-09T12:09:16.558462'}
+        2017-12-09 12:09:16,587 - msg-proc - INFO - No auto-caching or pub-hook set exchange=None
+        2017-12-09 12:09:16,588 - msg-proc - INFO - msg-proc proc done - msg
+
+#.  Check the Redis keys for the new User Conversion Events key
+
+    ::
+
+        redis-cli 
+        127.0.0.1:6379> keys *
+        1) "_kombu.binding.reporting.accounts"
+        2) "_kombu.binding.user.events"
+        3) "_kombu.binding.celery.redis.sub"
+        4) "_kombu.binding.user.events.conversions"
+        127.0.0.1:6379> 
 
 Run a Message Processor from RabbitMQ with Relay Publish Hook to Redis
 ======================================================================
@@ -293,20 +427,21 @@ This could also be set up for auto-caching instead of this pub-sub flow because 
 
     ::
 
-        $ ./start-kombu-message-processor-rabbitmq.py 
-        2017-12-03 23:09:30,912 - loader-name - INFO - Start - msg-proc
-        2017-12-03 23:09:30,913 - msg-proc - INFO - msg-proc START - consume_queue=user.events.conversions rk=reporting.accounts
+        start-kombu-message-processor-rabbitmq.py
+        2017-12-09 12:25:09,962 - loader-name - INFO - Start - msg-proc
+        2017-12-09 12:25:09,962 - msg-proc - INFO - msg-proc START - consume_queue=user.events.conversions rk=reporting.accounts
+        2017-12-09 12:25:09,962 - msg-sub - INFO - setup routing
+        2017-12-09 12:25:09,987 - msg-sub - INFO - msg-sub - kombu.subscriber queues=user.events.conversions consuming with callback=process_message
 
 #.  Send a User Conversion Event to RabbitMQ
 
     ::
 
-        $ ./publish-user-conversion-events-rabbitmq.py 
-        2017-12-03 23:30:01,892 - publish-user-conversion-events - INFO - Start - publish-user-conversion-events
-        2017-12-03 23:30:01,893 - publish-user-conversion-events - INFO - Building message
-        2017-12-03 23:30:01,893 - publish-user-conversion-events - INFO - Sending user conversion event msg={'subscription_id': 222, 'stripe_id': 333, 'account_id': 111, 'product_id': 'DEF'} ex=user.events rk=user.events.conversions
-        2017-12-03 23:30:01,930 - publish-uce-rabbitmq - INFO - READY - PUB - exch=user.events queue=<Queue user.events.conversions -> <Exchange user.events(topic) bound to chan:2> -> user.events.conversions bound to chan:2> body={'subscription_id': 222, 'stripe_id': 333, 'account_id': 111, 'product_id': 'DEF'}
-        2017-12-03 23:30:01,931 - publish-user-conversion-events - INFO - End - publish-user-conversion-events
+        publish-user-conversion-events-rabbitmq.py
+        2017-12-09 12:25:35,167 - publish-user-conversion-events - INFO - Start - publish-user-conversion-events
+        2017-12-09 12:25:35,167 - publish-user-conversion-events - INFO - Sending user conversion event msg={'subscription_id': 888, 'created': '2017-12-09T12:25:35.167891', 'stripe_id': 999, 'account_id': 777, 'product_id': 'XYZ'} ex=user.events rk=user.events.conversions
+        2017-12-09 12:25:35,185 - publish-uce-rabbitmq - INFO - SEND - exch=user.events rk=user.events.conversions
+        2017-12-09 12:25:35,187 - publish-user-conversion-events - INFO - End - publish-user-conversion-events sent=True
 
 #.  Verify the Kombu RabbitMQ Message Processor Handled the Message
 
@@ -314,11 +449,12 @@ This could also be set up for auto-caching instead of this pub-sub flow because 
 
     ::
 
-        2017-12-03 23:30:01,935 - msg-proc - INFO - msg-proc proc start - msg props=<Message object at 0x7f0b1264be58 with details {'delivery_tag': 3, 'delivery_info': {'exchange': 'user.events', 'routing_key': 'user.events.conversions'}, 'state': 'RECEIVED', 'content_type': 'application/json', 'body_length': 82, 'properties': {}}> body={'subscription_id': 222, 'stripe_id': 333, 'product_id': 'DEF', 'account_id': 111}
-        2017-12-03 23:30:01,936 - msg-proc - INFO - msg-proc pub-hook - build - hook msg body
-        2017-12-03 23:30:01,936 - msg-proc - INFO - msg-proc pub-hook - send - exchange=reporting.accounts rk=reporting.accounts sz=json
-        2017-12-03 23:30:01,936 - msg-pub - INFO - READY - PUB - exch=reporting.accounts queue=<Queue reporting.accounts -> <Exchange reporting.accounts(topic) bound to chan:2> -> reporting.accounts bound to chan:2> body={'org_msg': {'subscription_id': 222, 'stripe_id': 333, 'product_id': 'DEF', 'account_id': 111}, 'created': '2017-12-03 23:30:01', 'data': {}, 'source': 'msg-proc', 'version': 1}
-        2017-12-03 23:30:01,937 - msg-proc - INFO - msg-proc proc done - msg props=<Message object at 0x7f0b1264be58 with details {'delivery_tag': 3, 'delivery_info': {'exchange': 'user.events', 'routing_key': 'user.events.conversions'}, 'state': 'ACK', 'content_type': 'application/json', 'body_length': 82, 'properties': {}}> body={'subscription_id': 222, 'stripe_id': 333, 'product_id': 'DEF', 'account_id': 111}
+        2017-12-09 12:25:35,188 - msg-proc - INFO - msg-proc proc start - msg body={u'subscription_id': 888, u'product_id': u'XYZ', u'stripe_id': 999, u'account_id': 777, u'created': u'2017-12-09T12:25:35.167891'}
+        2017-12-09 12:25:35,188 - msg-proc - INFO - msg-proc pub-hook - build - hook msg body
+        2017-12-09 12:25:35,188 - msg-proc - INFO - msg-proc pub-hook - send - exchange=reporting.accounts rk=reporting.accounts sz=json
+        2017-12-09 12:25:35,210 - msg-pub - INFO - SEND - exch=reporting.accounts rk=reporting.accounts
+        2017-12-09 12:25:35,212 - msg-proc - INFO - msg-proc pub-hook - send - done exchange=reporting.accounts rk=reporting.accounts res=True
+        2017-12-09 12:25:35,212 - msg-proc - INFO - msg-proc proc done - msg
 
 #.  Process the Redis ``reporting.accounts`` queue
 
@@ -326,12 +462,12 @@ This could also be set up for auto-caching instead of this pub-sub flow because 
 
     ::
 
-        $ ./kombu_redis_subscriber.py 
-        2017-12-03 23:30:44,203 - kombu-redis-subscriber - INFO - Start - kombu-redis-subscriber
-        2017-12-03 23:30:44,203 - kombu-redis-subscriber - INFO - setup routing
-        2017-12-03 23:30:44,234 - kombu-redis-subscriber - INFO - kombu-redis-subscriber - kombu.subscriber queues=reporting.accounts consuming with callback=<function handle_message at 0x7f8b1b03b950>
-        2017-12-03 23:30:44,236 - kombu-redis-subscriber - INFO - kombu.subscriber recv msg props=<Message object at 0x7f8b0cec68b8 with details {'delivery_tag': 'c1d985a3-c954-424b-b9dd-afa32c786163', 'properties': {}, 'body_length': 177, 'delivery_info': {'exchange': 'reporting.accounts', 'routing_key': 'reporting.accounts'}, 'state': 'RECEIVED', 'content_type': 'application/json'}> body={'version': 1, 'data': {}, 'org_msg': {'product_id': 'DEF', 'stripe_id': 333, 'subscription_id': 222, 'account_id': 111}, 'created': '2017-12-03 23:30:01', 'source': 'msg-proc'}
-        2017-12-03 23:30:44,237 - kombu-redis-subscriber - INFO - End - kombu-redis-subscriber
+        kombu_redis_subscriber.py 
+        2017-12-09 12:26:21,846 - kombu-redis-subscriber - INFO - Start - kombu-redis-subscriber
+        2017-12-09 12:26:21,846 - kombu-redis-subscriber - INFO - setup routing
+        2017-12-09 12:26:21,867 - kombu-redis-subscriber - INFO - kombu-redis-subscriber - kombu.subscriber queues=reporting.accounts consuming with callback=handle_message
+        2017-12-09 12:26:21,869 - kombu-redis-subscriber - INFO - callback received msg body={u'data': {}, u'org_msg': {u'subscription_id': 888, u'created': u'2017-12-09T12:25:35.167891', u'stripe_id': 999, u'product_id': u'XYZ', u'account_id': 777}, u'hook_created': u'2017-12-09T12:25:35.188420', u'version': 1, u'source': u'msg-proc'}
+        2017-12-09 12:26:21,870 - kombu-redis-subscriber - INFO - End - kombu-redis-subscriber
 
 SQS - Experimental
 ==================
@@ -345,34 +481,42 @@ I have opened a PR for fixing the kombu http client.
         export SQS_AWS_ACCESS_KEY=<ACCESS KEY>
         export SQS_AWS_SECRET_KEY=<SECRET KEY>
 
-
 #.  Publish to SQS
 
     ::
 
-        $ ./kombu_sqs_publisher.py 
-        2017-12-08 02:43:13,915 - kombu-sqs-publisher - INFO - Start - kombu-sqs-publisher
-        2017-12-08 02:43:13,916 - kombu-sqs-publisher - INFO - Building message
-        2017-12-08 02:43:13,916 - kombu-sqs-publisher - INFO - Sending user conversion event msg={'product_id': 'DEF', 'stripe_id': 333, 'account_id': 111, 'subscription_id': 222, 'sent': '2017-12-08T02:43:13.916717'} ex=test1 rk=test1
-        2017-12-08 02:43:14,038 - botocore.vendored.requests.packages.urllib3.connectionpool - INFO - Starting new HTTPS connection (1): queue.amazonaws.com
-        2017-12-08 02:43:14,609 - botocore.vendored.requests.packages.urllib3.connectionpool - INFO - Starting new HTTPS connection (1): queue.amazonaws.com
-        2017-12-08 02:43:15,202 - kombu-sqs-publisher - INFO - READY - PUB - exch=test1 queue=<Queue test1 -> <Exchange test1(topic) bound to chan:2> -> test1 bound to chan:2> body={'product_id': 'DEF', 'stripe_id': 333, 'account_id': 111, 'subscription_id': 222, 'sent': '2017-12-08T02:43:13.916717'}
-        2017-12-08 02:43:15,327 - kombu-sqs-publisher - INFO - End - kombu-sqs-publisher
-        $
+        kombu_sqs_publisher.py 
+        2017-12-09 12:49:24,900 - kombu-sqs-publisher - INFO - Start - kombu-sqs-publisher
+        2017-12-09 12:49:24,901 - kombu-sqs-publisher - INFO - Sending user conversion event msg={'subscription_id': 222, 'product_id': 'DEF', 'stripe_id': 333, 'account_id': 111, 'created': '2017-12-09T12:49:24.901513'} ex=test1 rk=test1
+        2017-12-09 12:49:25,007 - botocore.vendored.requests.packages.urllib3.connectionpool - INFO - Starting new HTTPS connection (1): queue.amazonaws.com
+        2017-12-09 12:49:25,538 - botocore.vendored.requests.packages.urllib3.connectionpool - INFO - Starting new HTTPS connection (1): queue.amazonaws.com
+        2017-12-09 12:49:26,237 - kombu-sqs-publisher - INFO - SEND - exch=test1 rk=test1
+        2017-12-09 12:49:26,352 - kombu-sqs-publisher - INFO - End - kombu-sqs-publisher sent=True
 
 #.  Subscribe to SQS
+
+    Please see the debugging section for getting this to function with kombu 4.1.0 
+
+    https://github.com/jay-johnson/celery-connectors#temporary-fix-for-kombu-sqs
     
     ::
     
-        $ ./kombu_sqs_subscriber.py 
-        2017-12-08 02:43:15,871 - kombu-sqs-subscriber - INFO - Start - kombu-sqs-subscriber
-        2017-12-08 02:43:15,871 - kombu-sqs-subscriber - INFO - setup routing
-        2017-12-08 02:43:16,003 - botocore.vendored.requests.packages.urllib3.connectionpool - INFO - Starting new HTTPS connection (1): queue.amazonaws.com
-        2017-12-08 02:43:16,553 - botocore.vendored.requests.packages.urllib3.connectionpool - INFO - Starting new HTTPS connection (1): queue.amazonaws.com
-        2017-12-08 02:43:17,387 - kombu-sqs-subscriber - INFO - kombu-sqs-subscriber - kombu.subscriber queues=test1 consuming with callback=<function handle_message at 0x7f52e3f62950>
-        2017-12-08 02:43:17,609 - kombu-sqs-subscriber - INFO - kombu.subscriber recv msg props=<Message object at 0x7f52d5208c18 with details {'body_length': 120, 'state': 'RECEIVED', 'content_type': 'application/json', 'delivery_tag': 'AQEB1tHiUnAt79FOyJCCOg1vcP8Zx45kK1bHZj0G4A1tzPbnakeq1rtGdn1Z+cTQJ/TutEcYOuLfZk8kxKtLYbd9FnPtgVBjvGrcfVInoGJ66OakAOOuLpMtlan2GSSHR7BNrZsKp4oSDEFx9hMqQefeVAM026KWE9yN/xydcTwytUXc4xT2z9wc/JF9KaQ7QsvCOW4dvWtkDW3Ti0A0iOEAN+ONA9UY9HPh934cAfTGvXQaQBCw4cfKuOiusIlLo4DyzLbxVwzLMp+uROuiyvol3ua4e9sa5B/83HTfgl+Do5hCjhK8+q3TEtwAVbdL8v22PUVoay6Zyf2xBao983Y/PMdc/xT4HoOvaGz5Ps4oc2biPpqKTZRn+YU3fi0GvI6Y', 'properties': {}, 'delivery_info': {'exchange': 'test1', 'routing_key': 'test1'}}> body={'stripe_id': 333, 'product_id': 'DEF', 'account_id': 111, 'subscription_id': 222, 'sent': '2017-12-08T02:43:13.916717'}
-        2017-12-08 02:43:17,628 - kombu-sqs-subscriber - INFO - End - kombu-sqs-subscriber
-        $
+        kombu_sqs_subscriber.py 
+        2017-12-09 12:49:41,232 - kombu-sqs-subscriber - INFO - Start - kombu-sqs-subscriber
+        2017-12-09 12:49:41,232 - kombu-sqs-subscriber - INFO - setup routing
+        2017-12-09 12:49:41,333 - botocore.vendored.requests.packages.urllib3.connectionpool - INFO - Starting new HTTPS connection (1): queue.amazonaws.com
+        2017-12-09 12:49:41,801 - botocore.vendored.requests.packages.urllib3.connectionpool - INFO - Starting new HTTPS connection (1): queue.amazonaws.com
+        2017-12-09 12:49:42,517 - kombu-sqs-subscriber - INFO - kombu-sqs-subscriber - kombu.subscriber queues=test1 consuming with callback=handle_message
+        2017-12-09 12:49:42,671 - kombu-sqs-subscriber - INFO - callback received msg body={u'subscription_id': 222, u'created': u'2017-12-09T12:49:24.901513', u'stripe_id': 333, u'product_id': u'DEF', u'account_id': 111}
+        2017-12-09 12:49:42,773 - kombu-sqs-subscriber - INFO - End - kombu-sqs-subscriber
+
+#.  Verify the SQS Queue ``test1`` is empty
+
+    ::
+    
+        aws sqs receive-message --queue-url https://queue.amazonaws.com/<YOUR QUEUE ID>/test1
+        echo $?
+        0
 
 Debugging with rabbitmqadmin
 =============================
@@ -388,9 +532,10 @@ Script in pip
 
 ::
 
-    $ ./list-queues.sh 
+    list-queues.sh 
 
     Listing Queues broker=localhost:15672
+
     +--------------------+-----------+----------+----------------+-------------------------+
     |        name        | consumers | messages | messages_ready | messages_unacknowledged |
     +--------------------+-----------+----------+----------------+-------------------------+
@@ -402,14 +547,13 @@ Manual way
 
 ::
 
-    $ rabbitmqadmin.py --host=localhost --port=15672 --username=rabbitmq --password=rabbitmq list queues
+    rabbitmqadmin.py --host=localhost --port=15672 --username=rabbitmq --password=rabbitmq list queues
     +--------------------+-----------+----------+----------------+-------------------------+
     |        name        | consumers | messages | messages_ready | messages_unacknowledged |
     +--------------------+-----------+----------+----------------+-------------------------+
     | celery             | 0         | 0        | 0              | 0                       |
     | reporting.accounts | 0         | 0        | 0              | 0                       |
     +--------------------+-----------+----------+----------------+-------------------------+
-    $ 
 
 Checking exchanges
 ------------------
@@ -418,9 +562,10 @@ Script in pip
 
 ::
 
-    $ ./list-exchanges.sh 
+    list-exchanges.sh 
 
     Listing Exchanges broker=localhost:15672
+
     +---------------------+---------+
     |        name         |  type   |
     +---------------------+---------+
@@ -443,7 +588,7 @@ Manual way
 
 ::
 
-    $ rabbitmqadmin.py --host=localhost --port=15672 --username=rabbitmq --password=rabbitmq list exchanges name typa
+    rabbitmqadmin.py --host=localhost --port=15672 --username=rabbitmq --password=rabbitmq list exchanges name typa
     +---------------------+---------+
     |        name         |  type   |
     +---------------------+---------+
@@ -461,7 +606,6 @@ Manual way
     | reply.celery.pidbox | direct  |
     | reporting.accounts  | topic   |
     +---------------------+---------+
-    $ 
 
 List Bindings
 =============
@@ -470,9 +614,10 @@ Script in pip
 
 ::
 
-    $ list-bindings.sh 
+    list-bindings.sh 
 
     Listing Bindings broker=localhost:15672
+
     +--------------------+--------------------+--------------------+
     |       source       |    destination     |    routing_key     |
     +--------------------+--------------------+--------------------+
@@ -486,7 +631,7 @@ Manual way
 
 ::
 
-    $ rabbitmqadmin.py --host=localhost --port=15672 --username=rabbitmq --password=rabbitmq list bindings source destination routing_key
+    rabbitmqadmin.py --host=localhost --port=15672 --username=rabbitmq --password=rabbitmq list bindings source destination routing_key
     +--------------------+--------------------+--------------------+
     |       source       |    destination     |    routing_key     |
     +--------------------+--------------------+--------------------+
@@ -495,7 +640,6 @@ Manual way
     | celery             | celery             | celery             |
     | reporting          | reporting.accounts | reporting.accounts |
     +--------------------+--------------------+--------------------+
-
 
 Development Guide
 =================
@@ -517,37 +661,119 @@ Development Guide
 Debugging
 =========
 
+pycURL Reinstall with NSS
+-------------------------
 
-#.  pycURL Reinstall with OpenSSL
+For anyone wanting to use kombu SQS, I had to uninstall ``pycurl`` and install it with ``nss``.
 
-    For anyone wanting to use kombu SQS with python 3, I had to uninstall pycurl and install it with openssl.
+The error looked like this in the logs:
 
-    The error I saw this happening on reported:
+::
 
-    ::
+    2017-12-09 12:28:46,811 - kombu-sqs-subscriber - INFO - kombu-sqs-subscriber - kombu.subscriber consume hit exception=The curl client requires the pycurl library. queue=test1
 
-        kombu-sqs-subscriber - kombu.subscriber consume hit ex=The curl client requires the pycurl library. queue=test1
 
-    So I opened up a python shell
+So I opened up a python shell
 
-    ::
+Python 2:
 
-        $ python
-        Python 3.5.3 (default, May 11 2017, 09:10:41) 
-        [GCC 6.3.1 20161221 (Red Hat 6.3.1-1)] on linux
-        Type "help", "copyright", "credits" or "license" for more information.
-        >>> import pycurl
-        Traceback (most recent call last):
-          File "<stdin>", line 1, in <module>
-        ImportError: pycurl: libcurl link-time ssl backend (nss) is different from compile-time ssl backend (none/other)
-        >>> 
+::
 
-    Uninstalled and Reinstalled pycurl with nss
+    $ python
+    Python 2.7.12 (default, Sep 29 2016, 13:30:34) 
+    [GCC 6.2.1 20160916 (Red Hat 6.2.1-2)] on linux2
+    Type "help", "copyright", "credits" or "license" for more information.
+    >>> import pycurl
+    Traceback (most recent call last):
+    File "<stdin>", line 1, in <module>
+    File "build/bdist.linux-x86_64/egg/pycurl.py", line 7, in <module>
+    File "build/bdist.linux-x86_64/egg/pycurl.py", line 6, in __bootstrap__
+    ImportError: pycurl: libcurl link-time ssl backend (nss) is different from compile-time ssl backend (none/other)
+    >>> 
 
-    ::
+Python 3:
 
-        pip uninstall -y pycurl; pip install pycurl --compile --global-option="--with-nss" pycurl
+::
 
+    $ python
+    Python 3.5.3 (default, May 11 2017, 09:10:41) 
+    [GCC 6.3.1 20161221 (Red Hat 6.3.1-1)] on linux
+    Type "help", "copyright", "credits" or "license" for more information.
+    >>> import pycurl
+    Traceback (most recent call last):
+        File "<stdin>", line 1, in <module>
+    ImportError: pycurl: libcurl link-time ssl backend (nss) is different from compile-time ssl backend (none/other)
+    >>> 
+
+Uninstalled and Reinstalled pycurl with nss
+
+::
+
+    pip uninstall -y pycurl; pip install pycurl --compile --global-option="--with-nss" pycurl
+
+Temporary fix for Kombu SQS
+---------------------------
+
+SQS Kombu Subscriber ``'NoneType' object has no attribute 'call_repeatedly'``
+
+Until Kombu fixes the SQS transport and publishes it to pypi, the SQS subscriber will throw exceptions like below.
+
+::
+
+    kombu_sqs_subscriber.py 
+    2017-12-09 12:30:45,493 - kombu-sqs-subscriber - INFO - Start - kombu-sqs-subscriber
+    2017-12-09 12:30:45,493 - kombu-sqs-subscriber - INFO - setup routing
+    2017-12-09 12:30:45,602 - botocore.vendored.requests.packages.urllib3.connectionpool - INFO - Starting new HTTPS connection (1): queue.amazonaws.com
+    2017-12-09 12:30:46,046 - botocore.vendored.requests.packages.urllib3.connectionpool - INFO - Starting new HTTPS connection (1): queue.amazonaws.com
+    2017-12-09 12:30:46,832 - kombu-sqs-subscriber - INFO - kombu-sqs-subscriber - kombu.subscriber queues=test1 consuming with callback=handle_message
+    2017-12-09 12:30:46,989 - kombu-sqs-subscriber - INFO - callback received msg body={u'subscription_id': 222, u'created': u'2017-12-09T12:28:28.093582', u'stripe_id': 333, u'product_id': u'DEF', u'account_id': 111}
+    2017-12-09 12:30:46,994 - kombu-sqs-subscriber - INFO - kombu-sqs-subscriber - kombu.subscriber consume hit exception='NoneType' object has no attribute 'call_repeatedly' queue=test1
+    2017-12-09 12:30:46,994 - kombu-sqs-subscriber - INFO - End - kombu-sqs-subscriber
+    Restoring 1 unacknowledged message(s)
+
+Notice the last line has put the message into SQS in-flight which means it has not been acknowledged or deleted.
+
+You can verify this message is still there with the aws cli:
+
+::
+
+    aws sqs receive-message --queue-url https://queue.amazonaws.com/<YOUR QUEUE ID>/test1
+    {
+        "Messages": [
+            {
+                "Body": "eyJib2R5IjogImV5SnpkV0p6WTNKcGNIUnBiMjVmYVdRaU9pQXlNaklzSUNKd2NtOWtkV04wWDJsa0lqb2dJa1JGUmlJc0lDSnpkSEpwY0dWZmFXUWlPaUF6TXpNc0lDSmhZMk52ZFc1MFgybGtJam9nTVRFeExDQWlZM0psWVhSbFpDSTZJQ0l5TURFM0xURXlMVEE1VkRFeU9qVXpPakEwTGpjME9UY3lOaUo5IiwgImhlYWRlcnMiOiB7fSwgImNvbnRlbnQtdHlwZSI6ICJhcHBsaWNhdGlvbi9qc29uIiwgInByb3BlcnRpZXMiOiB7InByaW9yaXR5IjogMCwgImJvZHlfZW5jb2RpbmciOiAiYmFzZTY0IiwgImRlbGl2ZXJ5X2luZm8iOiB7InJvdXRpbmdfa2V5IjogInRlc3QxIiwgImV4Y2hhbmdlIjogInRlc3QxIn0sICJkZWxpdmVyeV9tb2RlIjogMiwgImRlbGl2ZXJ5X3RhZyI6ICJkOGI3MjNiMi05MDVkLTQxZTEtODVlNy00NjUwZGY2NWU2MTgifSwgImNvbnRlbnQtZW5jb2RpbmciOiAidXRmLTgifQ==", 
+                "ReceiptHandle": "AQEBDnxqT1+SOam1ZtMKPgh77a8bapLbcrI3PZRTqVZJokz0h7oMusuJPAB9jksH3BQHQyg3TyZXasBblpMcin3HTzh7ykTgAgawhMreOoWGGiaeEoOekaChn2yFpKDbVP1ZENRVcpAzeDXzCd52TITZbyLk8FY1PJB3XpAiih9SH/R0FPj3JnU0WTxjTAWtBnSlUUGXFc3CczJi61YsJS+bTZs8JIgDaICMF+zMhnV+rV4zXDObTVFM3OaMdf/puqZ9yRd3fM1GsOxZaDNRDGYKml/UK0tn32gtqPSuUW905YamwnWQYB9mF338Jgx11rv78b5lLogpU/0t6E+0tD1Lkr/UR/M64NZI2eTwp6ZHNtqTNbkjd5VsBgB39b+wXFFn", 
+                "MD5OfBody": "e72609877b90ad86df2f161c6303eaf0", 
+                "MessageId": "684328b4-a38c-4868-8550-e0d46599a0c2"
+            }
+        ]
+    }
+
+If you're feeling bold, you can run off my PR fix branch as well:
+
+::
+    
+    pip uninstall -y kombu ; rm -rf /tmp/sqs-pr-fix-with-kombu; git clone https://github.com/jay-johnson/kombu.git /tmp/sqs-pr-fix-with-kombu && pushd /tmp/sqs-pr-fix-with-kombu && git checkout sqs-http-get-client && python setup.py develop && popd
+
+With the SQS fix applied locally (works on python 2 and 3 on my fedora 24 vm):
+
+::
+
+    2017-12-09 12:47:12,177 - kombu-sqs-subscriber - INFO - Start - kombu-sqs-subscriber
+    2017-12-09 12:47:12,177 - kombu-sqs-subscriber - INFO - setup routing
+    2017-12-09 12:47:12,295 - botocore.vendored.requests.packages.urllib3.connectionpool - INFO - Starting new HTTPS connection (1): queue.amazonaws.com
+    2017-12-09 12:47:12,736 - botocore.vendored.requests.packages.urllib3.connectionpool - INFO - Starting new HTTPS connection (1): queue.amazonaws.com
+    2017-12-09 12:47:13,454 - kombu-sqs-subscriber - INFO - kombu-sqs-subscriber - kombu.subscriber queues=test1 consuming with callback=handle_message
+    2017-12-09 12:47:13,592 - kombu-sqs-subscriber - INFO - callback received msg body={u'subscription_id': 222, u'created': u'2017-12-09T12:28:28.093582', u'stripe_id': 333, u'product_id': u'DEF', u'account_id': 111}
+    2017-12-09 12:47:13,689 - kombu-sqs-subscriber - INFO - End - kombu-sqs-subscriber
+
+After running it you can confirm the message has been deleted and acknowledged with the aws cli:
+
+::
+
+    aws sqs receive-message --queue-url https://queue.amazonaws.com/<YOUR QUEUE ID>/test1
+    echo $?
+    0
 
 Linting
 -------
@@ -559,4 +785,6 @@ Linting
 License
 -------
 
-Apache 2.0 - Please refer to the LICENSE for more details
+Apache 2.0 - Please refer to the LICENSE_ for more details
+
+.. _License: https://github.com/jay-johnson/celery-connectors/blob/master/LICENSE

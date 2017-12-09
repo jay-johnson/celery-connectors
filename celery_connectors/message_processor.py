@@ -1,11 +1,10 @@
 import datetime
 import logging
 from celery_connectors.utils import ev
-from celery_connectors.log.setup_logging import setup_logging
 from celery_connectors.kombu_subscriber import KombuSubscriber
 from celery_connectors.publisher import Publisher
 
-setup_logging()
+log = logging.getLogger("message-processor")
 
 
 class MessageProcessor:
@@ -22,7 +21,6 @@ class MessageProcessor:
                  pub_silent=False):
 
         self.name = name
-        self.log = logging.getLogger(self.name)
         self.recv_msgs = []
         self.sub_auth_url = sub_auth_url
         self.pub_auth_url = pub_auth_url
@@ -52,7 +50,7 @@ class MessageProcessor:
         publish_hook_body = {
             "org_msg": body,
             "data": data,
-            "created": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "hook_created": datetime.datetime.now().isoformat(),
             "source": self.name,
             "version": self.pub_hook_version
         }
@@ -60,8 +58,8 @@ class MessageProcessor:
     # end of build_publish_node
 
     def process_message(self, body, message):
-        self.log.info(("{} proc start - msg props={} body={}")
-                      .format(self.name, message, body))
+        log.info(("{} proc start - msg body={}")
+                 .format(self.name, body))
 
         self.recv_msgs.append(body)
 
@@ -70,19 +68,20 @@ class MessageProcessor:
             processing_data = {}
 
             if self.pub_verbose:
-                self.log.info(("{} pub-hook - build - hook msg body")
-                              .format(self.name,
-                                      self.exchange_name,
-                                      self.routing_key))
+                log.info(("{} pub-hook - build - "
+                          "hook msg body")
+                         .format(self.name))
 
-            publish_hook_body = self.build_publish_node(body, data=processing_data)
+            publish_hook_body = self.build_publish_node(body,
+                                                        data=processing_data)
 
             if self.pub_verbose:
-                self.log.info(("{} pub-hook - send - exchange={} rk={} sz={}")
-                              .format(self.name,
-                                      self.exchange_name,
-                                      self.routing_key,
-                                      self.pub_serializer))
+                log.info(("{} pub-hook - send - "
+                          "exchange={} rk={} sz={}")
+                         .format(self.name,
+                                 self.exchange_name,
+                                 self.routing_key,
+                                 self.pub_serializer))
 
             try:
                 publish_hook_result = self.get_pub().publish(body=publish_hook_body,
@@ -92,29 +91,32 @@ class MessageProcessor:
                                                              serializer=self.pub_serializer,
                                                              retry=True)
                 if self.pub_verbose:
-                    self.log.info(("{} pub-hook - send - done "
-                                   "exchange={} rk={} res={}")
-                                  .format(self.name,
-                                          self.routing_key,
-                                          publish_hook_result))
+                    log.info(("{} pub-hook - send - done "
+                              "exchange={} rk={} res={}")
+                             .format(self.name,
+                                     self.exchange_name,
+                                     self.routing_key,
+                                     publish_hook_result))
 
             except Exception as hookfailed:
-                self.log.info(("{} Non-fatal - publish hook failed " +
-                               "body={} exchange={} rk={} sz={} ex={}")
-                              .format(self.name,
-                                      body,
-                                      self.exchange_name,
-                                      self.routing_key,
-                                      self.pub_serializer,
-                                      hookfailed))
+                log.info(("{} Non-fatal - publish hook failed " +
+                          "body={} exchange={} rk={} sz={} ex={}")
+                         .format(self.name,
+                                 body,
+                                 self.exchange_name,
+                                 self.routing_key,
+                                 self.pub_serializer,
+                                 hookfailed))
         else:
-            self.log.info("No auto-caching or pub-hook set exchange={}".format(self.exchange))
+            log.info(("No auto-caching or pub-hook "
+                      "set exchange={}")
+                     .format(self.exchange))
         # end of send to publisher
 
         message.ack()
 
-        self.log.info(("{} proc done - msg props={} body={}")
-                      .format(self.name, message, body))
+        log.info(("{} proc done - msg")
+                 .format(self.name))
     # end of process_message
 
     def get_pub(self):
@@ -154,10 +156,10 @@ class MessageProcessor:
         self.sub_serializer = sub_serializer
         sub_silent = silent
 
-        self.log.info(("{} START - consume_queue={} rk={}")
-                      .format(self.name,
-                              self.queue_name,
-                              self.routing_key))
+        log.info(("{} START - consume_queue={} rk={}")
+                 .format(self.name,
+                         self.queue_name,
+                         self.routing_key))
 
         not_done = True
         while not_done:
@@ -177,10 +179,10 @@ class MessageProcessor:
 
         # end of while loop
 
-        self.log(("{} DONE - consume_queue={} rk={}")
-                 .format(self.name,
-                         self.queue_name,
-                         self.routing_key))
+        log(("{} DONE - consume_queue={} rk={}")
+            .format(self.name,
+                    self.queue_name,
+                    self.routing_key))
 
     # end of consume_queue
 

@@ -1,9 +1,8 @@
 import logging
 from kombu import Queue, Exchange, Producer, Connection
 from celery_connectors.utils import ev
-from celery_connectors.log.setup_logging import setup_logging
 
-setup_logging()
+log = logging.getLogger("kombu-publisher")
 
 
 class Publisher:
@@ -20,7 +19,6 @@ class Publisher:
 
         self.state = "not_ready"
         self.name = name
-        self.log = logging.getLogger(self.name)
         self.auth_url = auth_url
         self.ssl_options = ssl_options
 
@@ -56,10 +54,12 @@ class Publisher:
         self.serializer = serializer
 
         if self.routing_key:
-            self.log.debug("creating Exchange={} topic rk={}".format(self.exchange_name, self.routing_key))
+            log.debug(("creating Exchange={} topic rk={}")
+                      .format(self.exchange_name, self.routing_key))
             self.exchange_type = "topic"
         else:
-            self.log.debug("creating Exchange={} direct".format(self.exchange_name, self.routing_key))
+            log.debug(("creating Exchange={} direct")
+                      .format(self.exchange_name, self.routing_key))
             self.exchange_type = "direct"
         # end of if/else
 
@@ -88,14 +88,18 @@ class Publisher:
         #               "cert_reqs": ssl.CERT_REQUIRED,
         #          })
         #
-        self.conn = Connection(self.auth_url, transport_options=transport_options)
+        self.conn = Connection(self.auth_url,
+                               transport_options=transport_options)
+
         self.channel = self.conn.channel()
-        self.log.debug(("creating kombu.Producer broker={} ssl={} ex={} rk={} serializer={}")
-                       .format(self.auth_url,
-                               self.ssl_options,
-                               self.exchange_name,
-                               self.routing_key,
-                               self.serializer))
+
+        log.debug(("creating kombu.Producer broker={} "
+                   "ssl={} ex={} rk={} serializer={}")
+                  .format(self.auth_url,
+                          self.ssl_options,
+                          self.exchange_name,
+                          self.routing_key,
+                          self.serializer))
 
         self.producer = Producer(channel=self.channel,
                                  exchange=self.exchange,
@@ -105,10 +109,10 @@ class Publisher:
                                  *args,
                                  **kwargs)
 
-        self.log.debug("creating kombu.Exchange={}".format(self.exchange))
+        log.debug("creating kombu.Exchange={}".format(self.exchange))
         self.producer.declare()
 
-        self.log.debug("creating kombu.Queue={}".format(self.queue_name))
+        log.debug("creating kombu.Queue={}".format(self.queue_name))
         self.queue.maybe_bind(self.conn)
         self.queue.declare()
 
@@ -136,6 +140,8 @@ class Publisher:
         http://docs.celeryproject.org/en/latest/getting-started/brokers/redis.html#configuration
         """
 
+        msg_sent = False
+
         if self.state != "ready":
             self.setup_routing(exchange_name=exchange,
                                queue_name=queue,
@@ -143,17 +149,22 @@ class Publisher:
                                serializer=serializer,
                                on_return=None,
                                transport_options=transport_options)
+
+            if self.state != "ready":
+                log.info(("not in a ready state after "
+                          "setup_routing - {} - stopping")
+                         .format(self.state.upper()))
+                return msg_sent
         # end of initializing for the first time
 
         if not silent:
-            self.log.info(("{} - PUB - exch={} queue={} body={}")
-                          .format(self.state.upper(),
-                                  self.exchange.name,
-                                  self.queue,
-                                  body))
+            log.info(("SEND - "
+                      "exch={} rk={}")
+                     .format(self.exchange.name,
+                             self.routing_key))
 
         # http://docs.celeryproject.org/projects/kombu/en/latest/_modules/kombu/messaging.html#Producer.publish
-        send_result = self.producer.publish(
+        self.producer.publish(
             body=body,
             exchange=self.exchange.name,
             routing_key=self.routing_key,
@@ -164,17 +175,17 @@ class Publisher:
             *args,
             **kwargs
         )
+        msg_sent = True
 
         if not silent:
-            self.log.debug(("{} - PUB DONE - "
-                            "exch={} queues={} body={} res={}")
-                           .format(self.state.upper(),
-                                   self.exchange.name,
-                                   self.queue,
-                                   body,
-                                   send_result))
+            log.debug(("DONE - "
+                       "exch={} queues={} sent={}")
+                      .format(self.state.upper(),
+                              self.exchange.name,
+                              self.queue,
+                              msg_sent))
 
-        return send_result
+        return msg_sent
     # end of publish
 
 # end of Publisher

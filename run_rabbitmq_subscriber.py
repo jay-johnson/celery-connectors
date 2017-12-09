@@ -19,7 +19,9 @@ recv_msgs = []
 
 
 def handle_message(body, message):
-    log.info("recv msg props={} body={}".format(message, body))
+    log.info(("callback received msg "
+              "body={}")
+             .format(body))
     recv_msgs.append(body)
     message.ack()
 # end of handle_message
@@ -28,8 +30,8 @@ def handle_message(body, message):
 # Initialize Celery application
 ssl_options = {}
 transport_options = {}
-conn_attrs = {"task_default_queue": "celery-runrabbitsubcelery",
-              "task_default_exchange": "celery-runrabbitsubcelery"}
+conn_attrs = {"task_default_queue": "celery.rabbit.sub",
+              "task_default_exchange": "celery.rabbit.sub"}
 app = Celery()
 sub = Subscriber(name="rabbitmq-subscriber",
                  auth_url=ev("BROKER_URL",
