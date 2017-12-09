@@ -48,7 +48,7 @@ max_timeout = 43200
 transport_options = {}
 
 if not pub:
-    log.error("Failed to connect to broker={}".format(auth_url))
+    log.error("Failed to connect to broker={}".format(sqs_auth_url))
 else:
 
     log.info("Building message")
