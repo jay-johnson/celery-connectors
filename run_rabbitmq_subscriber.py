@@ -27,11 +27,17 @@ def handle_message(body, message):
 
 # Initialize Celery application
 ssl_options = {}
+transport_options = {}
+conn_attrs = {"task_default_queue": "celery-runrabbitsubcelery",
+              "task_default_exchange": "celery-runrabbitsubcelery"}
 app = Celery()
-sub = Subscriber("rabbitmq-subscriber",
-                 ev("BROKER_URL", "amqp://rabbitmq:rabbitmq@localhost:5672//"),
-                 app,
-                 ssl_options)
+sub = Subscriber(name="rabbitmq-subscriber",
+                 auth_url=ev("BROKER_URL",
+                             "amqp://rabbitmq:rabbitmq@localhost:5672//"),
+                 app=app,
+                 transport_options=transport_options,
+                 ssl_options=ssl_options,
+                 **conn_attrs)
 
 
 # Now consume:

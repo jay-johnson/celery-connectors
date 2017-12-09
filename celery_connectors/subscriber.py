@@ -14,7 +14,10 @@ class Subscriber:
                  name=ev("SUBSCRIBER_NAME", "celery-subscriber"),
                  auth_url=ev("BROKER_URL", "redis://localhost:6379/0"),
                  app=None,
-                 ssl_options={}):
+                 ssl_options={},
+                 transport_options={},
+                 worker_log_format="%(asctime)s: %(levelname)s %(message)s",
+                 **kwargs):
 
         """
         Available Brokers:
@@ -35,14 +38,22 @@ class Subscriber:
         self.log = logging.getLogger(self.name)
         self.auth_url = auth_url
         self.ssl_options = ssl_options
+        self.transport_options = transport_options
 
         self.subscriber_app = None
 
-        # allow passing in an initalized Celery application
+        # allow passing in an initialized Celery application
         if app:
             self.subscriber_app = app
         else:
             self.subscriber_app = Celery()
+
+        # update the celery configuration from the kwargs dictionary
+        self.subscriber_app.conf.update(kwargs)
+
+        # make sure to set the broker_url
+        self.subscriber_app.conf.broker_url = self.auth_url
+        self.subscriber_app.conf.worker_log_format = worker_log_format
 
         self.exchange = None
         self.consume_from_queues = []
