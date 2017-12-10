@@ -36,4 +36,8 @@ log.info(("Sending broker={} "
          .format(app.conf.broker_url,
                  body))
 
-app.send_task(task_name, (body, msg))
+result = app.send_task(task_name, (body, msg))
+
+log.info(("Done with msg_id={} result={}")
+         .format(body["msg_id"],
+                 result.get()))

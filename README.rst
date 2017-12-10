@@ -579,17 +579,21 @@ Publish User Conversion Events to the Celery Ecommerce Subscriber
 ::
 
     ./pub_demo.py 
-    INFO:demo-celery-publisher:Sending broker=amqp://rabbitmq:rabbitmq@localhost:5672// body={'product_id': 'JJJ', 'account_id': 999, 'subscription_id': 321, 'msg_id': UUID('79547cc0-1c0b-4c80-a406-5297203f6276'), 'stripe_id': 876, 'created': '2017-12-10T02:48:43.844928', 'version': 1}
+    INFO:demo-celery-publisher:Sending broker=amqp://rabbitmq:rabbitmq@localhost:5672// body={'version': 1, 'account_id': 999, 'msg_id': UUID('d88bb1d4-4fa9-4e5a-bc53-497d37e7da82'), 'stripe_id': 876, 'subscription_id': 321, 'created': '2017-12-10T03:31:47.998087', 'product_id': 'JJJ'}
+    INFO:demo-celery-publisher:Done with msg_id=d88bb1d4-4fa9-4e5a-bc53-497d37e7da82 result=True
+
 
 Confirm the Celery Worker Processed the Conversion Message
 ----------------------------------------------------------
 
 ::
 
-    [2017-12-10 02:48:43,878: INFO/MainProcess] Received task: ecommerce.tasks.handle_user_conversion_events[cf88dbe1-a335-4492-ac14-2179406553c8]  
-    [2017-12-10 02:48:43,880: INFO/ForkPoolWorker-2] Handle - uce - start body={'version': 1, 'subscription_id': 321, 'account_id': 999, 'product_id': 'JJJ', 'stripe_id': 876, 'msg_id': '79547cc0-1c0b-4c80-a406-5297203f6276', 'created': '2017-12-10T02:48:43.844928'}
-    [2017-12-10 02:48:43,880: INFO/ForkPoolWorker-2] Handle - uce - done
-    [2017-12-10 02:48:43,902: INFO/ForkPoolWorker-2] Task ecommerce.tasks.handle_user_conversion_events[cf88dbe1-a335-4492-ac14-2179406553c8] succeeded in 0.022218595000595087s: True
+    [2017-12-10 03:31:44,714: INFO/ForkPoolWorker-2] Task ecommerce.tasks.handle_user_conversion_events[45275a1b-fcec-4f79-8431-5e53999fd846] succeeded in 0.0021429680000437656s: True
+    [2017-12-10 03:31:48,040: INFO/MainProcess] Received task: ecommerce.tasks.handle_user_conversion_events[ca2ba491-17a3-4174-af1d-5ce1ccd47884]  
+    [2017-12-10 03:31:48,042: INFO/ForkPoolWorker-3] Handle - uce - start body={'account_id': 999, 'created': '2017-12-10T03:31:47.998087', 'product_id': 'JJJ', 'stripe_id': 876, 'msg_id': 'd88bb1d4-4fa9-4e5a-bc53-497d37e7da82', 'version': 1, 'subscription_id': 321}
+    [2017-12-10 03:31:48,042: INFO/ForkPoolWorker-3] Handle - uce - done
+    [2017-12-10 03:31:48,043: INFO/ForkPoolWorker-3] Task ecommerce.tasks.handle_user_conversion_events[ca2ba491-17a3-4174-af1d-5ce1ccd47884] succeeded in 0.001530610999907367s: True
+
 
 Check the Ecommerce Subscriber in Flower
 ----------------------------------------
