@@ -12,7 +12,7 @@ def get_celery_app(name=ev(
                        "relay"),
                    auth_url=ev(
                        "BROKER_URL",
-                       "pyamqp://rabbitmq:rabbitmq@localhost:5672//"),
+                       "amqp://rabbitmq:rabbitmq@localhost:5672//"),
                    ssl_options={},
                    transport_options={},
                    worker_log_format="relay - %(asctime)s: %(levelname)s %(message)s",
