@@ -55,9 +55,10 @@ How do I get started?
 
         docker ps
         CONTAINER ID        IMAGE                       COMMAND                  CREATED             STATUS              PORTS                                                                                                       NAMES
-        68f3b6e71563        redis:4.0.5-alpine          "docker-entrypoint..."   34 seconds ago      Up 33 seconds       0.0.0.0:6379->6379/tcp, 0.0.0.0:16379->16379/tcp                                                            celredis1
-        3fd938f4d5e0        rabbitmq:3.6.6-management   "docker-entrypoint..."   23 hours ago        Up 33 seconds       4369/tcp, 5671/tcp, 0.0.0.0:5672->5672/tcp, 0.0.0.0:15672->15672/tcp, 15671/tcp, 0.0.0.0:25672->25672/tcp   celrabbit1
-    
+        913e8092dbde        mher/flower:latest          "/usr/local/bin/py..."   35 seconds ago      Up 35 seconds                                                                                                                   celflowerredis
+        b6983a1316ba        rabbitmq:3.6.6-management   "docker-entrypoint..."   35 seconds ago      Up 34 seconds       4369/tcp, 5671/tcp, 0.0.0.0:5672->5672/tcp, 0.0.0.0:15672->15672/tcp, 15671/tcp, 0.0.0.0:25672->25672/tcp   celrabbit1
+        52cb4c511d61        redis:4.0.5-alpine          "docker-entrypoint..."   35 seconds ago      Up 34 seconds       0.0.0.0:6379->6379/tcp, 0.0.0.0:16379->16379/tcp                                                            celredis1
+        202bdaf70784        mher/flower:latest          "/usr/local/bin/py..."   35 seconds ago      Up 35 seconds                                                                                                                   celflowerrabbit
 Redis Message Processing Example
 --------------------------------
 
@@ -93,6 +94,12 @@ This example uses Celery bootsteps (http://docs.celeryproject.org/en/latest/user
     ::
 
         2017-12-09 08:20:08,221: INFO callback received msg body={u'account_id': 123, u'created': u'2017-12-09T08:20:04.027159'}
+
+#.  View the Redis Subscriber in Flower
+
+    Redis Flower server (login admin/admin)
+    
+    http://localhost:5556/
 
 #.  Look at the Redis keys
 
@@ -189,6 +196,12 @@ This example uses Celery bootsteps (http://docs.celeryproject.org/en/latest/user
     ::
 
         2017-12-09 11:02:38,608: INFO callback received msg body={u'account_id': 456, u'created': u'2017-12-09T11:00:54.419829'}
+
+#.  View the Rabbit Subscriber in Flower
+
+    Rabbit Flower server (login admin/admin)
+    
+    http://localhost:5555/
 
 #.  Verify the message is no longer in the Queue and Celery is connected as a consumer
 

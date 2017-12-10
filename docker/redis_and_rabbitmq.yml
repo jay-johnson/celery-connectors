@@ -2,6 +2,7 @@ version: '2'
 
 services:
 
+  # Redis
   celredis1:
     hostname: redis1
     image: redis:4.0.5-alpine
@@ -42,4 +43,40 @@ services:
       options:
         max-size: "500k"
         max-file: "50"
+
+  # Flower for RabbitMQ
+  celflowerrabbit:
+    image: "mher/flower:latest"
+    hostname: "celflowerrabbit"
+    env_file:
+      - ./env/flowerrabbit-dev.env
+    labels:
+      NAME: "flowerrabbit"
+    container_name: "celflowerrabbit"
+    logging:
+      # limit logs retained on host to 25MB
+      driver: "json-file"
+      options:
+        max-size: "500k"
+        max-file: "50"
+    network_mode: "host"
+    entrypoint: "/usr/local/bin/python /usr/local/bin/flower --broker=amqp://rabbitmq:rabbitmq@localhost:5672 --port=5555 --basic_auth=admin:admin"
+
+  # Flower for Redis
+  celflowerredis:
+    image: "mher/flower:latest"
+    hostname: "celflowerredis"
+    env_file:
+      - ./env/flowerredis-dev.env
+    labels:
+      NAME: "flowerredis"
+    container_name: "celflowerredis"
+    logging:
+      # limit logs retained on host to 25MB
+      driver: "json-file"
+      options:
+        max-size: "500k"
+        max-file: "50"
+    network_mode: "host"
+    entrypoint: "/usr/local/bin/python /usr/local/bin/flower --broker=redis://localhost:6379 --port=5556 --basic_auth=admin:admin"
 
