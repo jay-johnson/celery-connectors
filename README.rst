@@ -546,8 +546,8 @@ Start the Celery Worker as an Ecommerce Subscriber
 ::
 
     celery worker -A sub_demo --loglevel=INFO -n ecommerce_subscriber
-    INFO:loader-name:Start - msg-proc
-    INFO:loader-name:End - msg-proc
+    INFO:demo-sub:Start - demo-sub
+    INFO:demo-sub:End - demo-sub
     
     -------------- celery@ecommerce_subscriber v4.1.0 (latentcall)
     ---- **** ----- 

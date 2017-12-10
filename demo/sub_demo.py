@@ -11,9 +11,9 @@ import ecommerce.tasks
 
 setup_logging()
 
-name = "msg-proc"
+name = "demo-sub"
 
-log = logging.getLogger("loader-name")
+log = logging.getLogger(name)
 
 log.info("Start - {}".format(name))
 
@@ -29,9 +29,5 @@ app = ecommerce.tasks.get_celery_app(name="demo",
 
 # if you want to discover tasks in other directories:
 # app.autodiscover_tasks(["example"])
-
-body = {}
-msg = {"source": "rabbitmq",
-       "data": {}}
 
 log.info("End - {}".format(name))
