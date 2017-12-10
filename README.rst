@@ -126,7 +126,7 @@ Please start this in a new terminal that has sourced the virtual env: ``source v
 Publish a User Conversion Event to the Ecomm Relay
 --------------------------------------------------
 
-This will use Kombu to publish a JSON dictionary message to the ``user.events.conversions`` which is monitored by the ecomm relay.
+This will use Kombu to publish a JSON dictionary message to the ``user.events.conversions`` RabbitMQ queue which is monitored by the ecomm relay.
 
 Please start this in a new terminal that has sourced the virtual env: ``source venv/bin/activate``
 
