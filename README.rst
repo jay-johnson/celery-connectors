@@ -531,6 +531,87 @@ I have opened a PR for fixing the kombu http client.
         echo $?
         0
 
+Ecommerce Pub Sub Demo with Celery
+==================================
+
+#.  Change to the ``demo`` directory
+
+    ::
+    
+        cd demo
+
+Start the Celery Worker as an Ecommerce Subscriber
+--------------------------------------------------
+
+::
+
+    celery worker -A sub_demo --loglevel=INFO -n ecommerce_subscriber
+    INFO:loader-name:Start - msg-proc
+    INFO:loader-name:End - msg-proc
+    
+    -------------- celery@ecommerce_subscriber v4.1.0 (latentcall)
+    ---- **** ----- 
+    --- * ***  * -- Linux-4.7.4-200.fc24.x86_64-x86_64-with-fedora-24-Twenty_Four 2017-12-10 02:48:02
+    -- * - **** --- 
+    - ** ---------- [config]
+    - ** ---------- .> app:         demo:0x7fa72698d2e8
+    - ** ---------- .> transport:   amqp://rabbitmq:**@localhost:5672//
+    - ** ---------- .> results:     rpc://
+    - *** --- * --- .> concurrency: 4 (prefork)
+    -- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+    --- ***** ----- 
+    -------------- [queues]
+                    .> celery           exchange=celery(direct) key=celery
+                    
+
+    [tasks]
+    . ecommerce.tasks.handle_user_conversion_events
+
+    [2017-12-10 02:48:02,601: INFO/MainProcess] Connected to amqp://rabbitmq:**@127.0.0.1:5672//
+    [2017-12-10 02:48:02,612: INFO/MainProcess] mingle: searching for neighbors
+    [2017-12-10 02:48:03,662: INFO/MainProcess] mingle: all alone
+    [2017-12-10 02:48:03,719: INFO/MainProcess] celery@ecommerce_subscriber ready.
+    [2017-12-10 02:48:04,051: INFO/MainProcess] Events of group {task} enabled by remote.
+
+Publish User Conversion Events to the Celery Ecommerce Subscriber
+-----------------------------------------------------------------
+
+::
+
+    ./pub_demo.py 
+    INFO:demo-celery-publisher:Sending broker=amqp://rabbitmq:rabbitmq@localhost:5672// body={'product_id': 'JJJ', 'account_id': 999, 'subscription_id': 321, 'msg_id': UUID('79547cc0-1c0b-4c80-a406-5297203f6276'), 'stripe_id': 876, 'created': '2017-12-10T02:48:43.844928', 'version': 1}
+
+Confirm the Celery Worker Processed the Conversion Message
+----------------------------------------------------------
+
+::
+
+    [2017-12-10 02:48:43,878: INFO/MainProcess] Received task: ecommerce.tasks.handle_user_conversion_events[cf88dbe1-a335-4492-ac14-2179406553c8]  
+    [2017-12-10 02:48:43,880: INFO/ForkPoolWorker-2] Handle - uce - start body={'version': 1, 'subscription_id': 321, 'account_id': 999, 'product_id': 'JJJ', 'stripe_id': 876, 'msg_id': '79547cc0-1c0b-4c80-a406-5297203f6276', 'created': '2017-12-10T02:48:43.844928'}
+    [2017-12-10 02:48:43,880: INFO/ForkPoolWorker-2] Handle - uce - done
+    [2017-12-10 02:48:43,902: INFO/ForkPoolWorker-2] Task ecommerce.tasks.handle_user_conversion_events[cf88dbe1-a335-4492-ac14-2179406553c8] succeeded in 0.022218595000595087s: True
+
+Check the Ecommerce Subscriber in Flower
+----------------------------------------
+
+The Ecommerce Publisher and Subscriber are using RabbitMQ which is registered under the Flower url:
+
+http://localhost:5555/ - (login: admin/admin)
+
+There should be a Worker named:
+
+::
+
+    celery@ecommerce_subscriber
+
+There are also additional worker details available at:
+
+http://localhost:5555/worker/celery@ecommerce_subscriber
+
+View the registered ecommerce tasks for the worker:
+
+http://localhost:5555/worker/celery@ecommerce_subscriber#tab-tasks
+
 Debugging with rabbitmqadmin
 =============================
 

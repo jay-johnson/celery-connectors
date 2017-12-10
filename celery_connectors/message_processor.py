@@ -146,7 +146,8 @@ class MessageProcessor:
                       pub_queue_name=None,
                       seconds_to_consume=1.0,
                       forever=True,
-                      silent=False):
+                      silent=False,
+                      callback=None):
 
         self.queue_name = queue
         self.exchange_name = exchange
@@ -156,15 +157,21 @@ class MessageProcessor:
         self.sub_serializer = sub_serializer
         sub_silent = silent
 
-        log.info(("{} START - consume_queue={} rk={}")
+        use_callback = self.process_message
+        if callback:
+            use_callback = callback
+        
+        log.info(("{} START - consume_queue={} "
+                  "rk={} callback={}")
                  .format(self.name,
                          self.queue_name,
-                         self.routing_key))
+                         self.routing_key,
+                         use_callback.__name__))
 
         not_done = True
         while not_done:
 
-            self.get_sub().consume(callback=self.process_message,
+            self.get_sub().consume(callback=use_callback,
                                    queue=self.queue_name,
                                    exchange=None,
                                    routing_key=None,

@@ -56,7 +56,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "celery_connectors"))
 setup(
     name="celery-connectors",
     cmdclass={"build_py": build_py},
-    version="1.0.14",
+    version="1.0.15",
     description="Celery Headless Connectors",
     long_description="Running headless Celery bootsteps to process " +
     "json or pickled messages from Redis, RabbitMQ or AWS SQS. " +
