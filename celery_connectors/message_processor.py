@@ -160,7 +160,7 @@ class MessageProcessor:
         use_callback = self.process_message
         if callback:
             use_callback = callback
-        
+
         log.info(("{} START - consume_queue={} "
                   "rk={} callback={}")
                  .format(self.name,
