@@ -59,6 +59,147 @@ How do I get started?
         b6983a1316ba        rabbitmq:3.6.6-management   "docker-entrypoint..."   35 seconds ago      Up 34 seconds       4369/tcp, 5671/tcp, 0.0.0.0:5672->5672/tcp, 0.0.0.0:15672->15672/tcp, 15671/tcp, 0.0.0.0:25672->25672/tcp   celrabbit1
         52cb4c511d61        redis:4.0.5-alpine          "docker-entrypoint..."   35 seconds ago      Up 34 seconds       0.0.0.0:6379->6379/tcp, 0.0.0.0:16379->16379/tcp                                                            celredis1
         202bdaf70784        mher/flower:latest          "/usr/local/bin/py..."   35 seconds ago      Up 35 seconds                                                                                                                   celflowerrabbit
+
+Running an Ecommerce JSON-to-Celery Relay Service
+=================================================
+
+This will simulate hooking up an existing Celery application to start processing Celery tasks from JSON messages in a RabbitMQ queue. This is useful because it allows reusing existing Celery application tasks over a JSON messaging layer for mapping payloads to specific, existing Celery tasks. With this approach you can glue python and non-python services together provided that they can publish JSON messages to Redis, RabbitMQ or AWS SQS (please refer to the `fix SQS`_ section). Each of the components below can scale horizontally for redundancy. Each one also utilizes native RabbitMQ acks (https://www.rabbitmq.com/confirms.html) to ensure messages are never deleted or lost until propagation to the next queue or component has been confirmed.
+
+.. _fix SQS: https://github.com/jay-johnson/celery-connectors#temporary-fix-for-kombu-sqs
+
+Note: Please run this demo with three separate terminal sessions and a browser to view the Celery application's task progress in Flower.
+
+Start Ecommerce Celery Worker
+-----------------------------
+
+Start a Celery worker for an existing ecommerce application from a hypothetical Django or Flask server.
+
+Note: Please run this from the base directory for the repository and source the virtual env: ``source venv/bin/activate``
+
+::
+
+    ./start-ecomm-worker.sh 
+    
+    -------------- celery@ecommerce_subscriber v4.1.0 (latentcall)
+    ---- **** ----- 
+    --- * ***  * -- Linux-4.7.4-200.fc24.x86_64-x86_64-with-fedora-24-Twenty_Four 2017-12-10 14:31:37
+    -- * - **** --- 
+    - ** ---------- [config]
+    - ** ---------- .> app:         ecommerce-worker:0x7f61a973d470
+    - ** ---------- .> transport:   amqp://rabbitmq:**@localhost:5672//
+    - ** ---------- .> results:     rpc://
+    - *** --- * --- .> concurrency: 4 (prefork)
+    -- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+    --- ***** ----- 
+    -------------- [queues]
+                    .> celery           exchange=celery(direct) key=celery
+                    
+
+    [tasks]
+    . ecomm_app.ecommerce.tasks.handle_user_conversion_events
+
+    [2017-12-10 14:31:37,165: INFO/MainProcess] Connected to amqp://rabbitmq:**@127.0.0.1:5672//
+    [2017-12-10 14:31:37,182: INFO/MainProcess] mingle: searching for neighbors
+    [2017-12-10 14:31:38,217: INFO/MainProcess] mingle: all alone
+    [2017-12-10 14:31:38,262: INFO/MainProcess] celery@ecommerce_subscriber ready.
+    [2017-12-10 14:31:41,014: INFO/MainProcess] Events of group {task} enabled by remote.
+
+Notice the worker is named ``celery@ecommerce_subscriber`` this is the identifier for viewing the Celery application in Flower:
+
+http://localhost:5555/worker/celery@ecommerce_subscriber (login: admin/admin)
+
+Start Ecomm Relay
+-----------------
+
+This process will consume JSON dictionary messages on the ``user.events.conversions`` RabbitMQ queue and pass the message to the ecomm Celery app as a ``ecomm_app.ecommerce.tasks.handle_user_conversion_events`` Celery task.
+
+Please start this in a new terminal that has sourced the virtual env: ``source venv/bin/activate``
+
+::
+
+    ./start-ecomm-relay.py 
+    2017-12-10 14:34:20,290 - ecomm-relay-loader - INFO - Start - ecomm-relay
+    2017-12-10 14:34:20,290 - message-processor - INFO - ecomm-relay START - consume_queue=user.events.conversions rk=reporting.accounts callback=relay_callback
+    2017-12-10 14:34:20,290 - kombu-subscriber - INFO - setup routing
+    2017-12-10 14:34:20,314 - kombu-subscriber - INFO - msg-sub - kombu.subscriber queues=user.events.conversions consuming with callback=relay_callback
+
+Publish a User Conversion Event to the Ecomm Relay
+--------------------------------------------------
+
+This will use Kombu to publish a JSON dictionary message to the ``user.events.conversions`` which is monitored by the ecomm relay.
+
+Please start this in a new terminal that has sourced the virtual env: ``source venv/bin/activate``
+
+::
+
+    publish-user-conversion-events-rabbitmq.py 
+    INFO:publish-user-conversion-events:Start - publish-user-conversion-events
+    INFO:publish-user-conversion-events:Sending user conversion event msg={'account_id': 777, 'product_id': 'XYZ', 'stripe_id': 999, 'created': '2017-12-10T14:40:54.733901', 'subscription_id': 888} ex=user.events rk=user.events.conversions
+    INFO:kombu-publisher:SEND - exch=user.events rk=user.events.conversions
+    INFO:publish-user-conversion-events:End - publish-user-conversion-events sent=True
+
+Verify the Ecomm Relay Processed the Conversion Message
+-------------------------------------------------------
+
+The logs for the ecomm relay should show something similar to:
+
+::
+
+    2017-12-10 14:40:54,774 - ecomm-relay-loader - INFO - Sending broker=amqp://rabbitmq:rabbitmq@localhost:5672// body={'msg_id': '3b2aa0e0-2b68-421c-9a4f-3ad9a30a5abc', 'stripe_id': 876, 'subscription_id': 321, 'created': '2017-12-10T14:40:54.772966', 'version': 1, 'org_msg': {'created': '2017-12-10T14:40:54.733901', 'stripe_id': 999, 'subscription_id': 888, 'account_id': 777, 'product_id': 'XYZ'}, 'account_id': 999, 'product_id': 'JJJ'}
+    2017-12-10 14:40:54,840 - ecomm-relay-loader - INFO - Done with msg_id=3b2aa0e0-2b68-421c-9a4f-3ad9a30a5abc result=True
+    
+Verify the Ecomm Celery Application Processed the Task
+------------------------------------------------------
+
+The logs for the ecomm Celery worker should show something similar to:
+
+::
+
+    [2017-12-10 14:40:54,815: INFO/MainProcess] Received task: ecomm_app.ecommerce.tasks.handle_user_conversion_events[737a1b0a-20f9-4ef5-ade8-d5f437e4fbb3]  
+    [2017-12-10 14:40:54,817: INFO/ForkPoolWorker-3] task - user_conversion_events - start body={'account_id': 999, 'product_id': 'JJJ', 'org_msg': {'account_id': 777, 'product_id': 'XYZ', 'created': '2017-12-10T14:40:54.733901', 'subscription_id': 888, 'stripe_id': 999}, 'created': '2017-12-10T14:40:54.772966', 'stripe_id': 876, 'subscription_id': 321, 'msg_id': '3b2aa0e0-2b68-421c-9a4f-3ad9a30a5abc', 'version': 1}
+    [2017-12-10 14:40:54,817: INFO/ForkPoolWorker-3] task - user_conversion_events - done
+    [2017-12-10 14:40:54,839: INFO/ForkPoolWorker-3] Task ecomm_app.ecommerce.tasks.handle_user_conversion_events[737a1b0a-20f9-4ef5-ade8-d5f437e4fbb3] succeeded in 0.022475273000054585s: True
+
+View the Ecomm Celery Worker Tasks in Flower
+--------------------------------------------
+
+The ``Processed`` and ``Succeeded`` task counts for the ``celery@ecommerce_subscriber`` should increment each time a User Conversion Event is published by the ecomm relay to the ecomm worker.
+
+http://localhost:5555/dashboard
+
+View specific task details:
+
+http://localhost:5555/tasks
+
+Stop the Ecomm Demo
+-------------------
+
+In the ecomm relay and ecomm worker terminal sessions use: ``ctrl + c`` to stop the processes.
+
+Restart the docker containers to a good, clean state.
+
+Stop:
+
+::
+    
+    stop-redis-and-rabbitmq.sh 
+    Stopping redis and rabbitmq
+    Stopping celrabbit1      ... done
+    Stopping celredis1       ... done
+    Stopping celflowerredis  ... done
+    Stopping celflowerrabbit ... done
+
+Start:
+
+::
+
+    start-redis-and-rabbitmq.sh 
+    Starting redis and rabbitmq
+    Creating celrabbit1 ... done
+    Creating celrabbit1 ... done
+    Creating celredis1 ... done
+    Creating celflowerredis ... done
+
 Redis Message Processing Example
 --------------------------------
 
@@ -531,30 +672,24 @@ I have opened a PR for fixing the kombu http client.
         echo $?
         0
 
-Ecommerce Pub Sub Demo with Celery
-==================================
-
-#.  Change to the ``demo`` directory
-
-    ::
-    
-        cd demo
+Simple Pub Sub with an Existing Celery Task
+===========================================
 
 Start the Celery Worker as an Ecommerce Subscriber
 --------------------------------------------------
 
+Please run this from the base directory of the repository in a terminal that has sourced the virtual env: ``source venv/bin/activate``.
+
 ::
 
-    celery worker -A sub_demo --loglevel=INFO -n ecommerce_subscriber
-    INFO:demo-sub:Start - demo-sub
-    INFO:demo-sub:End - demo-sub
+    ./start-ecomm-worker.sh 
     
     -------------- celery@ecommerce_subscriber v4.1.0 (latentcall)
     ---- **** ----- 
-    --- * ***  * -- Linux-4.7.4-200.fc24.x86_64-x86_64-with-fedora-24-Twenty_Four 2017-12-10 02:48:02
+    --- * ***  * -- Linux-4.7.4-200.fc24.x86_64-x86_64-with-fedora-24-Twenty_Four 2017-12-10 15:12:11
     -- * - **** --- 
     - ** ---------- [config]
-    - ** ---------- .> app:         demo:0x7fa72698d2e8
+    - ** ---------- .> app:         ecommerce-worker:0x7fae3cfa2198
     - ** ---------- .> transport:   amqp://rabbitmq:**@localhost:5672//
     - ** ---------- .> results:     rpc://
     - *** --- * --- .> concurrency: 4 (prefork)
@@ -565,35 +700,45 @@ Start the Celery Worker as an Ecommerce Subscriber
                     
 
     [tasks]
-    . ecommerce.tasks.handle_user_conversion_events
+    . ecomm_app.ecommerce.tasks.handle_user_conversion_events
 
-    [2017-12-10 02:48:02,601: INFO/MainProcess] Connected to amqp://rabbitmq:**@127.0.0.1:5672//
-    [2017-12-10 02:48:02,612: INFO/MainProcess] mingle: searching for neighbors
-    [2017-12-10 02:48:03,662: INFO/MainProcess] mingle: all alone
-    [2017-12-10 02:48:03,719: INFO/MainProcess] celery@ecommerce_subscriber ready.
-    [2017-12-10 02:48:04,051: INFO/MainProcess] Events of group {task} enabled by remote.
+    [2017-12-10 15:12:11,727: INFO/MainProcess] Connected to amqp://rabbitmq:**@127.0.0.1:5672//
+    [2017-12-10 15:12:11,740: INFO/MainProcess] mingle: searching for neighbors
+    [2017-12-10 15:12:12,776: INFO/MainProcess] mingle: all alone
+    [2017-12-10 15:12:12,828: INFO/MainProcess] celery@ecommerce_subscriber ready.
+    [2017-12-10 15:12:13,633: INFO/MainProcess] Events of group {task} enabled by remote.
+
 
 Publish User Conversion Events to the Celery Ecommerce Subscriber
 -----------------------------------------------------------------
 
-::
+Please run this from a separate terminal that has sourced the virtual env: ``source venv/bin/activate``.
 
-    ./pub_demo.py 
-    INFO:demo-celery-publisher:Sending broker=amqp://rabbitmq:rabbitmq@localhost:5672// body={'version': 1, 'account_id': 999, 'msg_id': UUID('d88bb1d4-4fa9-4e5a-bc53-497d37e7da82'), 'stripe_id': 876, 'subscription_id': 321, 'created': '2017-12-10T03:31:47.998087', 'product_id': 'JJJ'}
-    INFO:demo-celery-publisher:Done with msg_id=d88bb1d4-4fa9-4e5a-bc53-497d37e7da82 result=True
+#.  Change to the ``ecomm_app`` directory
 
+    ::
+    
+        cd ecomm_app
+
+#.  Publish a task
+
+    This will use the Celery ``send_task`` method to publish the Celery task: ``ecomm_app.ecommerce.tasks.handle_user_conversion_events`` to RabbitMQ which is monitored by the Celery ecommerce worker.
+
+    ::
+
+        ./publish_task.py 
+        INFO:celery-task-publisher:Sending broker=amqp://rabbitmq:rabbitmq@localhost:5672// body={'subscription_id': 321, 'msg_id': '6d7ab602-f7cd-4d90-a0c5-5eb0cdcb41d9', 'version': 1, 'product_id': 'JJJ', 'account_id': 999, 'stripe_id': 876, 'created': '2017-12-10T15:16:08.557804'}
+        INFO:celery-task-publisher:Done with msg_id=6d7ab602-f7cd-4d90-a0c5-5eb0cdcb41d9 result=True
 
 Confirm the Celery Worker Processed the Conversion Message
 ----------------------------------------------------------
 
 ::
 
-    [2017-12-10 03:31:44,714: INFO/ForkPoolWorker-2] Task ecommerce.tasks.handle_user_conversion_events[45275a1b-fcec-4f79-8431-5e53999fd846] succeeded in 0.0021429680000437656s: True
-    [2017-12-10 03:31:48,040: INFO/MainProcess] Received task: ecommerce.tasks.handle_user_conversion_events[ca2ba491-17a3-4174-af1d-5ce1ccd47884]  
-    [2017-12-10 03:31:48,042: INFO/ForkPoolWorker-3] Handle - uce - start body={'account_id': 999, 'created': '2017-12-10T03:31:47.998087', 'product_id': 'JJJ', 'stripe_id': 876, 'msg_id': 'd88bb1d4-4fa9-4e5a-bc53-497d37e7da82', 'version': 1, 'subscription_id': 321}
-    [2017-12-10 03:31:48,042: INFO/ForkPoolWorker-3] Handle - uce - done
-    [2017-12-10 03:31:48,043: INFO/ForkPoolWorker-3] Task ecommerce.tasks.handle_user_conversion_events[ca2ba491-17a3-4174-af1d-5ce1ccd47884] succeeded in 0.001530610999907367s: True
-
+    [2017-12-10 15:16:08,593: INFO/MainProcess] Received task: ecomm_app.ecommerce.tasks.handle_user_conversion_events[9349e1be-fca5-40b5-86d3-0661fdd9fd06]  
+    [2017-12-10 15:16:08,594: INFO/ForkPoolWorker-4] task - user_conversion_events - start body={'stripe_id': 876, 'version': 1, 'subscription_id': 321, 'created': '2017-12-10T15:16:08.557804', 'account_id': 999, 'product_id': 'JJJ', 'msg_id': '6d7ab602-f7cd-4d90-a0c5-5eb0cdcb41d9'}
+    [2017-12-10 15:16:08,595: INFO/ForkPoolWorker-4] task - user_conversion_events - done
+    [2017-12-10 15:16:08,619: INFO/ForkPoolWorker-4] Task ecomm_app.ecommerce.tasks.handle_user_conversion_events[9349e1be-fca5-40b5-86d3-0661fdd9fd06] succeeded in 0.025004414000250108s: True
 
 Check the Ecommerce Subscriber in Flower
 ----------------------------------------

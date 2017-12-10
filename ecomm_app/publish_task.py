@@ -9,17 +9,20 @@ import ecommerce.tasks
 
 setup_logging()
 
-name = "demo-celery-publisher"
+name = "celery-task-publisher"
 
 log = logging.getLogger(name)
 
 pub_auth_url = ev("PUB_BROKER_URL",
                   "amqp://rabbitmq:rabbitmq@localhost:5672//")
+path_to_config_module = "ecommerce.celeryconfig_pub_sub"
 
-app = ecommerce.tasks.get_celery_app(name="demo",
-                                     auth_url=pub_auth_url)
+app = ecommerce.tasks.get_celery_app(
+          name="demo",
+          auth_url=pub_auth_url,
+          path_to_config_module=path_to_config_module)
 
-task_name = "ecommerce.tasks.handle_user_conversion_events"
+task_name = "ecomm_app.ecommerce.tasks.handle_user_conversion_events"
 now = datetime.now().isoformat()
 body = {"account_id": 999,
         "subscription_id": 321,
@@ -27,7 +30,7 @@ body = {"account_id": 999,
         "created": now,
         "product_id": "JJJ",
         "version": 1,
-        "msg_id": uuid.uuid4()}
+        "msg_id": str(uuid.uuid4())}
 
 msg = {"internals": True}
 
