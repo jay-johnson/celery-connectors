@@ -1018,6 +1018,44 @@ After running it you can confirm the message has been deleted and acknowledged w
     echo $?
     0
 
+Testing
+=======
+
+Start the Relay
+---------------
+
+::
+
+    ./start-ecomm-relay.py
+
+Start the Celery Worker
+-----------------------
+
+::
+
+    ./start-ecomm-worker.sh
+
+
+Load Test Celery Worker over RabbitMQ
+-------------------------------------
+
+This will send 50,000 messages over with the Celery ``send_task`` method. As long as the ecomm Celery worker is running the messages will be sent over.
+
+::
+
+    python -m unittest tests/load_test_worker_rabbitmq.py
+
+
+Load Test Relay
+---------------
+
+This will send 50,000 messages over the ``user.events.conversions`` RabbitMQ queue for the ecomm relay to process and then send to the ecomm worker.
+
+::
+
+    python -m unittest tests/load_test_relay_rabbitmq.py
+    
+
 Linting
 -------
 
