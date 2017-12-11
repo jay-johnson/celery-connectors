@@ -1035,7 +1035,6 @@ Start the Celery Worker
 
     ./start-ecomm-worker.sh
 
-
 Load Test Celery Worker over RabbitMQ
 -------------------------------------
 
@@ -1044,7 +1043,6 @@ This will send 50,000 messages over with the Celery ``send_task`` method. As lon
 ::
 
     python -m unittest tests/load_test_worker_rabbitmq.py
-
 
 Load Test Relay
 ---------------
@@ -1055,7 +1053,6 @@ This will send 50,000 messages over the ``user.events.conversions`` RabbitMQ que
 
     python -m unittest tests/load_test_relay_rabbitmq.py
     
-
 Linting
 -------
 
