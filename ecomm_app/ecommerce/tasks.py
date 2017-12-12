@@ -1,4 +1,5 @@
 import os
+import time
 import logging
 from celery import Celery
 from celery.task import task
@@ -58,6 +59,14 @@ def handle_user_conversion_events(body={},
               "body={}")
              .format(label,
                      body))
+
+    if "simulate_processing_lag" in body:
+        log.info(("task - {} - simulating processing"
+                  "lag={} sleeping")
+                 .format(label,
+                         body["simulate_processing_lag"]))
+        time.sleep(float(body["simulate_processing_lag"]))
+    # end of handling adding artifical lag for testing Celery
 
     log.info(("task - {} - done")
              .format(label))

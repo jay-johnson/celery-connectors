@@ -2,6 +2,7 @@ import os
 import logging
 import datetime
 import uuid
+import random
 from celery_connectors.log.setup_logging import setup_logging
 from celery_connectors.utils import get_percent_done
 from celery_connectors.utils import ev
@@ -21,6 +22,7 @@ class LoadTestRelayRabbitMQConsuming(BaseTestCase):
                 "subscription_id": 888,
                 "stripe_id": 999,
                 "product_id": "XYZ",
+                "simulate_processing_lag": random.uniform(1.0, 5.0),
                 "msg_id": str(uuid.uuid4()),
                 "created": now}
 

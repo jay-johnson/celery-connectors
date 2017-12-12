@@ -2,6 +2,7 @@
 
 import logging
 import uuid
+import time
 from datetime import datetime
 from celery_connectors.utils import ev
 from celery_connectors.log.setup_logging import setup_logging
@@ -50,6 +51,14 @@ def relay_callback(body, message):
                      body))
 
     result = app.send_task(task_name, (body, source_id))
+
+    if "simulate_processing_lag" in body:
+        log.info(("task - {} - simulating processing"
+                  "lag={} sleeping")
+                 .format(task_name,
+                         body["simulate_processing_lag"]))
+        time.sleep(float(body["simulate_processing_lag"]))
+    # end of handling adding artifical lag for testing Celery
 
     log.info(("Done with msg_id={} result={}")
              .format(body["msg_id"],

@@ -177,6 +177,7 @@ class MessageProcessor:
                                    routing_key=None,
                                    serializer=self.sub_serializer,
                                    heartbeat=heartbeat,
+                                   forever=forever,
                                    time_to_wait=seconds_to_consume,
                                    silent=sub_silent)
 
@@ -186,10 +187,10 @@ class MessageProcessor:
 
         # end of while loop
 
-        log(("{} DONE - consume_queue={} rk={}")
-            .format(self.name,
-                    self.queue_name,
-                    self.routing_key))
+        log.info(("{} DONE - consume_queue={} rk={}")
+                 .format(self.name,
+                         self.queue_name,
+                         self.routing_key))
 
     # end of consume_queue
 

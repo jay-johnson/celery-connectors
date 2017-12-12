@@ -106,7 +106,8 @@ class Subscriber:
                 queue,
                 exchange=None,
                 routing_key=None,
-                silent=False):
+                silent=False,
+                auto_declare=True):
 
         """
         Redis does not have an Exchange or Routing Keys, but RabbitMQ does.
@@ -141,6 +142,7 @@ class Subscriber:
             def get_consumers(self, channel):
                 return [Consumer(channel,
                                  queues=consume_from_queues,
+                                 auto_declare=auto_declare,
                                  callbacks=[callback],
                                  accept=["json"])]
             # end of get_consumer

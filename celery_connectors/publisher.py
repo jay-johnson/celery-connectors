@@ -1,6 +1,8 @@
 import logging
+import time
 from kombu import Queue, Exchange, Producer, Connection
 from celery_connectors.utils import ev
+from celery_connectors.utils import calc_backoff_timer
 
 log = logging.getLogger("kombu-publisher")
 
@@ -10,7 +12,8 @@ class Publisher:
     def __init__(self,
                  name=ev("PUBLISHER_NAME", "kombu-publisher"),
                  auth_url=ev("BROKER_URL", "redis://localhost:6379/0"),
-                 ssl_options={}):
+                 ssl_options={},
+                 max_general_failures=-1):  # infinite retries
 
         """
         Available Transports:
@@ -28,6 +31,9 @@ class Publisher:
         self.conn = None
         self.channel = None
         self.producer = None
+        self.num_setup_failures = 0
+        self.num_publish_failures = 0
+        self.max_general_failures = max_general_failures
 
         self.exchange_name = ""
         self.exchange_type = "direct"
@@ -104,6 +110,7 @@ class Publisher:
         self.producer = Producer(channel=self.channel,
                                  exchange=self.exchange,
                                  routing_key=self.routing_key,
+                                 auto_declare=True,
                                  serializer=self.serializer,
                                  on_return=None,
                                  *args,
@@ -143,12 +150,28 @@ class Publisher:
         msg_sent = False
 
         if self.state != "ready":
-            self.setup_routing(exchange_name=exchange,
-                               queue_name=queue,
-                               routing_key=routing_key,
-                               serializer=serializer,
-                               on_return=None,
-                               transport_options=transport_options)
+            try:
+                self.setup_routing(
+                            exchange_name=exchange,
+                            queue_name=queue,
+                            routing_key=routing_key,
+                            serializer=serializer,
+                            on_return=None,
+                            transport_options=transport_options)
+                self.num_setup_failures = 0
+                self.num_publish_failures = 0
+            except Exception as c:
+                sleep_duration = calc_backoff_timer(self.num_setup_failures)
+                log.info(("SEND - Failed setup_routing with"
+                          "exchange={} rk={} ex={} sleep seconds={}")
+                         .format(self.exchange.name,
+                                 self.routing_key,
+                                 c,
+                                 sleep_duration))
+                self.num_setup_failures += 1
+                self.state = "not_ready"
+                time.sleep(sleep_duration)
+            # end try/ex to setup the broker
 
             if self.state != "ready":
                 log.info(("not in a ready state after "
@@ -164,18 +187,33 @@ class Publisher:
                              self.routing_key))
 
         # http://docs.celeryproject.org/projects/kombu/en/latest/_modules/kombu/messaging.html#Producer.publish
-        self.producer.publish(
-            body=body,
-            exchange=self.exchange.name,
-            routing_key=self.routing_key,
-            serializer=self.serializer,
-            priority=priority,
-            expiration=ttl,
-            retry=True,
-            *args,
-            **kwargs
-        )
-        msg_sent = True
+        try:
+            self.producer.publish(
+                    body=body,
+                    exchange=self.exchange.name,
+                    routing_key=self.routing_key,
+                    auto_declare=True,
+                    serializer=self.serializer,
+                    priority=priority,
+                    expiration=ttl,
+                    retry=False,
+                    *args,
+                    **kwargs)
+            msg_sent = True
+            self.num_publish_failures = 0
+        except Exception as e:
+            msg_sent = False
+            sleep_duration = calc_backoff_timer(self.num_publish_failures)
+            log.info(("SEND - Failed publish with"
+                      "exchange={} rk={} ex={} sleep seconds={}")
+                     .format(self.exchange.name,
+                             self.routing_key,
+                             e,
+                             sleep_duration))
+            self.num_publish_failures += 1
+            self.state = "not_ready"
+            time.sleep(sleep_duration)
+        # end of try/ex publish
 
         if not silent:
             log.debug(("DONE - "
