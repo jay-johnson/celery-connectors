@@ -60,6 +60,193 @@ How do I get started?
         52cb4c511d61        redis:4.0.5-alpine          "docker-entrypoint..."   35 seconds ago      Up 34 seconds       0.0.0.0:6379->6379/tcp, 0.0.0.0:16379->16379/tcp                                                            celredis1
         202bdaf70784        mher/flower:latest          "/usr/local/bin/py..."   35 seconds ago      Up 35 seconds                                                                                                                   celflowerrabbit
 
+Running a Payments JSON-to-JSON Relay Service
+=============================================
+
+This will simulate a json->json relay using kombu mixins:
+
+http://docs.celeryproject.org/projects/kombu/en/latest/reference/kombu.mixins.html
+
+Kombu mixins are a great way to process messages without Celery, and they are resilient to multiple HA scenarios including a complete broker failure. While building this I would load up messages to process, simulate lag before a message was ack-ed and then start/stop the RabbitMQ docker container to see how things reacted. As long as the subscribers can ``declare`` their consuming queues on a fresh broker start-up case, these mixins seem capable of surviving these types of disaster recovery events. By default these builds are going to only read one message out of the queue at a time.
+
+Start JSON Relay
+----------------
+
+This process will consume JSON dictionary messages on the ``ecomm.api.west`` RabbitMQ queue and pass the message to the ``reporting.payments`` queue.
+
+Please start this in a new terminal that has sourced the virtual env: ``source venv/bin/activate``
+
+::
+
+    start-mixin-json-relay.py 
+    INFO:mixin_relay:Consuming queues=1
+    INFO:relay:consuming queues=[<unbound Queue ecomm.api.west -> <unbound Exchange ecomm.api(topic)> -> ecomm.api.west>]
+    INFO:kombu.mixins:Connected to amqp://rabbitmq:**@127.0.0.1:5672//
+    INFO:relay-wrk:creating consumer for queues=1 callback=handle_message relay_ex=Exchange ''(direct) relay_rk=reporting.payments prefetch=1
+    
+List the Queues
+---------------
+
+In a new terminal that has the virtual env loaded, checkout the RabbitMQ queues:
+
+::
+
+    list-queues.sh 
+
+    Listing Queues broker=localhost:15672
+
++-----------------------------------------------+-----------+----------+----------------+-------------------------+
+|                     name                      | consumers | messages | messages_ready | messages_unacknowledged |
++-----------------------------------------------+-----------+----------+----------------+-------------------------+
+| celeryev.ea44162e-7224-4167-be30-4be614c33fc9 | 1         | 0        | 0              | 0                       |
++-----------------------------------------------+-----------+----------+----------------+-------------------------+
+| ecomm.api.west                                | 1         | 0        | 0              | 0                       |
++-----------------------------------------------+-----------+----------+----------------+-------------------------+
+
+Start the Kombu Mixin Subscriber
+--------------------------------
+
+In a new terminal that has the virtual env loaded, start the subscriber for relayed messags in the ``reporting.payments`` queue:
+
+::
+
+    kombu_mixin_subscriber.py 
+    INFO:kombu-mixin-subscriber:Start - kombu-mixin-subscriber
+    INFO:kombu-subscriber:setup routing
+    INFO:kombu-subscriber:kombu-mixin-subscriber - kombu.subscriber queues=reporting.payments consuming with callback=handle_message
+
+List the Bindings
+-----------------
+
+With the relay and the subscrbier online the bindings should show two separate queues for these two processes.
+
+::
+
+    list-bindings.sh 
+
+    Listing Bindings broker=localhost:15672
+
++--------------------+-----------------------------------------------+-----------------------------------------------+
+|       source       |                  destination                  |                  routing_key                  |
++--------------------+-----------------------------------------------+-----------------------------------------------+
+|                    | celeryev.ea44162e-7224-4167-be30-4be614c33fc9 | celeryev.ea44162e-7224-4167-be30-4be614c33fc9 |
++--------------------+-----------------------------------------------+-----------------------------------------------+
+|                    | ecomm.api.west                                | ecomm.api.west                                |
++--------------------+-----------------------------------------------+-----------------------------------------------+
+|                    | reporting.payments                            | reporting.payments                            |
++--------------------+-----------------------------------------------+-----------------------------------------------+
+| celeryev           | celeryev.ea44162e-7224-4167-be30-4be614c33fc9 | #                                             |
++--------------------+-----------------------------------------------+-----------------------------------------------+
+| ecomm.api          | ecomm.api.west                                | ecomm.api.west                                |
++--------------------+-----------------------------------------------+-----------------------------------------------+
+| reporting.payments | reporting.payments                            | reporting.payments                            |
++--------------------+-----------------------------------------------+-----------------------------------------------+
+
+Publish Ecomm messages to the Relay
+-----------------------------------
+
+In a new terminal that has the virtual env loaded, start the mixin publisher that will send JSON messages to the ``ecomm.api.west`` queue:
+
+::
+
+    $ start-mixin-publisher.py 
+    INFO:robopub:Generating messages=10
+    INFO:robopub:Publishing messages=10
+    INFO:pub_send:pub_send publish - ex=Exchange ecomm.api(topic) rk=ecomm.api.west sz=json
+    INFO:pub_send:pub_send publish - ex=Exchange ecomm.api(topic) rk=ecomm.api.west sz=json
+    INFO:pub_send:pub_send publish - ex=Exchange ecomm.api(topic) rk=ecomm.api.west sz=json
+    INFO:pub_send:pub_send publish - ex=Exchange ecomm.api(topic) rk=ecomm.api.west sz=json
+    INFO:pub_send:pub_send publish - ex=Exchange ecomm.api(topic) rk=ecomm.api.west sz=json
+    INFO:pub_send:pub_send publish - ex=Exchange ecomm.api(topic) rk=ecomm.api.west sz=json
+    INFO:pub_send:pub_send publish - ex=Exchange ecomm.api(topic) rk=ecomm.api.west sz=json
+    INFO:pub_send:pub_send publish - ex=Exchange ecomm.api(topic) rk=ecomm.api.west sz=json
+    INFO:pub_send:pub_send publish - ex=Exchange ecomm.api(topic) rk=ecomm.api.west sz=json
+    INFO:pub_send:pub_send publish - ex=Exchange ecomm.api(topic) rk=ecomm.api.west sz=json
+    INFO:robopub:Done Publishing
+
+Verify the Relay Handled the Messages
+-------------------------------------
+
+Verify the terminal logs in the relay look similar to:
+
+::
+
+    INFO:relay-wrk:default handle_message - acking - msg={'data': {'simulated_lag': 1.0}, 'msg_id': '35e8546f-f757-4764-9a25-12b867f61957_1', 'created': '2017-12-13T01:30:35.401399'}
+    INFO:relay-wrk:send start - relay_ex=Exchange ''(direct) relay_rk=reporting.payments id=95c93115-2041-424b-b37e-0e8dff1b6336_1
+    INFO:pub_send:pub_send publish - ex=Exchange ''(direct) rk=reporting.payments sz=json
+    INFO:relay-wrk:send done - id=95c93115-2041-424b-b37e-0e8dff1b6336_1
+    INFO:relay-wrk:default handle_message - acking - msg={'data': {'simulated_lag': 1.0}, 'msg_id': '989641cc-cd2b-4041-81aa-bdd27393646a_1', 'created': '2017-12-13T01:30:35.401529'}
+    INFO:relay-wrk:send start - relay_ex=Exchange ''(direct) relay_rk=reporting.payments id=7d8b473a-1f7e-4d04-8e8a-234536b0a8fb_1
+    INFO:pub_send:pub_send publish - ex=Exchange ''(direct) rk=reporting.payments sz=json
+    INFO:relay-wrk:send done - id=7d8b473a-1f7e-4d04-8e8a-234536b0a8fb_1
+    INFO:relay-wrk:default handle_message - acking - msg={'data': {'simulated_lag': 1.0}, 'msg_id': '68eb6ab0-2e41-4838-a088-927709c4d595_1', 'created': '2017-12-13T01:30:35.401554'}
+    INFO:relay-wrk:send start - relay_ex=Exchange ''(direct) relay_rk=reporting.payments id=4ca34760-db69-4c06-97c9-0355c38bd158_1
+    INFO:pub_send:pub_send publish - ex=Exchange ''(direct) rk=reporting.payments sz=json
+    INFO:relay-wrk:send done - id=4ca34760-db69-4c06-97c9-0355c38bd158_1
+    INFO:relay-wrk:default handle_message - acking - msg={'data': {'simulated_lag': 1.0}, 'msg_id': 'f906ab52-27f1-4ea7-bd68-2956da232258_1', 'created': '2017-12-13T01:30:35.401618'}
+    INFO:relay-wrk:send start - relay_ex=Exchange ''(direct) relay_rk=reporting.payments id=8a584a99-b35d-4e18-acd8-45d32871ba0a_1
+
+Verify the Subscriber Handled the Relayed Messages
+--------------------------------------------------
+
+::
+
+    INFO:kombu-mixin-subscriber:callback received msg body={'msg_id': '95c93115-2041-424b-b37e-0e8dff1b6336_1', 'data': {'org_msg': {'msg_id': '35e8546f-f757-4764-9a25-12b867f61957_1', 'data': {'simulated_lag': 1.0}, 'created': '2017-12-13T01:30:35.401399'}, 'relay_name': 'json-to-json-relay'}, 'created': '2017-12-13T01:30:35.423314'}
+    INFO:kombu-subscriber:kombu-mixin-subscriber - kombu.subscriber queues=reporting.payments consuming with callback=handle_message
+    INFO:kombu-mixin-subscriber:callback received msg body={'msg_id': '7d8b473a-1f7e-4d04-8e8a-234536b0a8fb_1', 'data': {'org_msg': {'msg_id': '989641cc-cd2b-4041-81aa-bdd27393646a_1', 'data': {'simulated_lag': 1.0}, 'created': '2017-12-13T01:30:35.401529'}, 'relay_name': 'json-to-json-relay'}, 'created': '2017-12-13T01:30:35.445645'}
+    INFO:kombu-subscriber:kombu-mixin-subscriber - kombu.subscriber queues=reporting.payments consuming with callback=handle_message
+    INFO:kombu-mixin-subscriber:callback received msg body={'msg_id': '4ca34760-db69-4c06-97c9-0355c38bd158_1', 'data': {'org_msg': {'msg_id': '68eb6ab0-2e41-4838-a088-927709c4d595_1', 'data': {'simulated_lag': 1.0}, 'created': '2017-12-13T01:30:35.401554'}, 'relay_name': 'json-to-json-relay'}, 'created': '2017-12-13T01:30:35.453077'}
+    INFO:kombu-subscriber:kombu-mixin-subscriber - kombu.subscriber queues=reporting.payments consuming with callback=handle_message
+    INFO:kombu-mixin-subscriber:callback received msg body={'msg_id': '8a584a99-b35d-4e18-acd8-45d32871ba0a_1', 'data': {'org_msg': {'msg_id': 'f906ab52-27f1-4ea7-bd68-2956da232258_1', 'data': {'simulated_lag': 1.0}, 'created': '2017-12-13T01:30:35.401618'}, 'relay_name': 'json-to-json-relay'}, 'created': '2017-12-13T01:30:35.458601'}
+
+Confirm the Queues are empty
+----------------------------
+
+::
+
+    list-queues.sh 
+
+    Listing Queues broker=localhost:15672
+
++-----------------------------------------------+-----------+----------+----------------+-------------------------+
+|                     name                      | consumers | messages | messages_ready | messages_unacknowledged |
++-----------------------------------------------+-----------+----------+----------------+-------------------------+
+| celeryev.ea44162e-7224-4167-be30-4be614c33fc9 | 1         | 0        | 0              | 0                       |
++-----------------------------------------------+-----------+----------+----------------+-------------------------+
+| ecomm.api.west                                | 1         | 0        | 0              | 0                       |
++-----------------------------------------------+-----------+----------+----------------+-------------------------+
+| reporting.payments                            | 1         | 0        | 0              | 0                       |
++-----------------------------------------------+-----------+----------+----------------+-------------------------+
+
+Stop the the JSON Relay Demo
+-----------------------------
+
+In the mixin relay and mixin subscriber terminal sessions use: ``ctrl + c`` to stop the processes.
+
+Restart the docker containers to a good, clean state.
+
+Stop:
+
+::
+    
+    stop-redis-and-rabbitmq.sh 
+    Stopping redis and rabbitmq
+    Stopping celrabbit1      ... done
+    Stopping celredis1       ... done
+    Stopping celflowerredis  ... done
+    Stopping celflowerrabbit ... done
+
+Start:
+
+::
+
+    start-redis-and-rabbitmq.sh 
+    Starting redis and rabbitmq
+    Creating celrabbit1 ... done
+    Creating celrabbit1 ... done
+    Creating celredis1 ... done
+    Creating celflowerredis ... done
+
 Running an Ecommerce JSON-to-Celery Relay Service
 =================================================
 

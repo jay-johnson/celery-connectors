@@ -185,7 +185,7 @@ class KombuSubscriber:
                        "running heartbeat check={}")
                       .format(t))
             self.conn.heartbeat_check()
-        except ConnectionRefusedError as c:
+        except ConnectionRefusedError:  # noqa
             sleep_duration = calc_backoff_timer(num=self.num_consume_failures)
             log.debug(("{} - kombu.subscriber - consume - hit "
                        "connection refused sleep seconds={}")
@@ -194,7 +194,7 @@ class KombuSubscriber:
             self.state = "connection refused"
             self.num_consume_failures += 1
             time.sleep(sleep_duration)
-        except ConnectionResetError as r:
+        except ConnectionResetError:  # noqa
             sleep_duration = calc_backoff_timer(num=self.num_consume_failures)
             log.info(("{} - kombu.subscriber - consume - hit "
                       "connection reset sleep seconds={}")
@@ -257,7 +257,7 @@ class KombuSubscriber:
                 ready_for_consume = True
                 self.num_setup_failures = 0
                 self.num_consume_failures = 0
-            except ConnectionRefusedError as c:
+            except ConnectionRefusedError:  # noqa
                 sleep_duration = calc_backoff_timer(num=self.num_setup_failures)
                 log.info(("{} - kombu.subscriber - setup - hit "
                           "connection refused sleep seconds={}")
