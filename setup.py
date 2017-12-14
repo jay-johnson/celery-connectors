@@ -38,9 +38,7 @@ install_requires = [
 
 if sys.version_info < (2, 7):
     warnings.warn(
-        "Python 2.6 is no longer officially supported by RedTen. "
-        "If you have any questions, please file an issue on Github or "
-        "contact us at https://github.com/jay-johnson/sci-pype",
+        "Python 2.6 is not supported.",
         DeprecationWarning)
 
 
