@@ -54,7 +54,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "celery_connectors"))
 setup(
     name="celery-connectors",
     cmdclass={"build_py": build_py},
-    version="1.0.17",
+    version="1.0.18",
     description="Celery Connectors",
     long_description="Messaging examples for Celery and Kombu. " +
     "Multple publisher-subscriber examples for processing json or " +
@@ -62,7 +62,7 @@ setup(
     "Includes Kombu message processors using native Producer and " +
     "Consumer classes as well as ConsumerProducerMixin workers for relay " +
     "publish-hook support to automate pub-sub or auto-caching. " +
-    "Also has includes docker RabbitMQ, Redis and Flower " +
+    "Also includes a docker compose file for RabbitMQ, Redis and Flower " +
     "containers too. Functional AWS SQS publish and subscribe tooling.",
     author="Jay Johnson",
     author_email="jay.p.h.johnson@gmail.com",
