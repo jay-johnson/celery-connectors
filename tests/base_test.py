@@ -1,3 +1,4 @@
+import os
 import logging
 import datetime
 import unittest
@@ -6,9 +7,7 @@ from celery_connectors.utils import ev
 from celery_connectors.publisher import Publisher
 from celery_connectors.kombu_subscriber import KombuSubscriber
 
-name = "base_test"
-
-log = logging.getLogger(name)
+log = logging.getLogger("base_test")
 
 
 class BaseTestCase(unittest.TestCase):
@@ -55,6 +54,9 @@ class BaseTestCase(unittest.TestCase):
     def setUp(self):
         if self.debug:
             print("setUp")
+
+        # state trips in the custom classes
+        os.environ["TEST_STOP_DONE"] = "1"
 
         self.last_pub_msg = None
         self.last_sub_msg = None
@@ -159,6 +161,7 @@ class BaseTestCase(unittest.TestCase):
                 serializer="application/json",
                 heartbeat=60,
                 time_to_wait=5.0,
+                forever=False,
                 silent=True):
 
         if not callback:
@@ -187,6 +190,7 @@ class BaseTestCase(unittest.TestCase):
                              routing_key=routing_key,
                              serializer=serializer,
                              heartbeat=heartbeat,
+                             forever=forever,
                              time_to_wait=time_to_wait,
                              silent=silent)
 

@@ -5,7 +5,7 @@ from kombu import Exchange, Queue
 from celery_connectors.utils import ev
 from celery_connectors.build_ssl_options import build_ssl_options
 from celery_connectors.log.setup_logging import setup_logging
-from celery_connectors.run_consumer_relay import run_consumer_relay
+from celery_connectors.run_jtoc_relay import run_jtoc_relay
 
 
 # Credits and inspirations from these great sources:
@@ -17,7 +17,7 @@ from celery_connectors.run_consumer_relay import run_consumer_relay
 # https://gist.github.com/mlavin/6671079
 
 setup_logging()
-name = ev("APP_NAME", "mixin_relay")
+name = ev("APP_NAME", "jtoc_relay")
 log = logging.getLogger(name)
 
 
@@ -37,6 +37,7 @@ task_queues = [
 ssl_options = build_ssl_options()
 
 relay_broker_url = ev("RELAY_BROKER_URL", "pyamqp://rabbitmq:rabbitmq@localhost:5672//")
+relay_backend_url = ev("RELAY_BROKER_URL", "redis://localhost:6379/10")
 relay_exchange_name = ev("RELAY_EXCHANGE_NAME", "")
 relay_exchange_type = ev("RELAY_EXCHANGE_TYPE", "direct")
 relay_routing_key = ev("RELAY_ROUTING_KEY", "reporting.payments")
@@ -47,13 +48,15 @@ transport_options = {}
 log.info(("Consuming queues={}")
          .format(len(task_queues)))
 
-run_consumer_relay(broker_url=broker_url,
-                   ssl_options=ssl_options,
-                   transport_options=transport_options,
-                   task_queues=task_queues,
-                   prefetch_count=prefetch_count,
-                   relay_broker_url=relay_broker_url,
-                   relay_exchange=relay_exchange,
-                   relay_routing_key=relay_routing_key)
+run_jtoc_relay(broker_url=broker_url,
+               ssl_options=ssl_options,
+               transport_options=transport_options,
+               task_queues=task_queues,
+               prefetch_count=prefetch_count,
+               relay_broker_url=relay_broker_url,
+               relay_backend_url=relay_backend_url,
+               relay_exchange=relay_exchange,
+               relay_exchange_type=relay_exchange_type,
+               relay_routing_key=relay_routing_key)
 
 log.info("Done")

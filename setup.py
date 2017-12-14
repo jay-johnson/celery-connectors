@@ -56,19 +56,16 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "celery_connectors"))
 setup(
     name="celery-connectors",
     cmdclass={"build_py": build_py},
-    version="1.0.16",
-    description="Celery Headless Connectors",
-    long_description="Running headless Celery bootsteps to process " +
-    "json or pickled messages from Redis, RabbitMQ or AWS SQS. " +
-    "Includes Kombu message processors with relay " +
-    "publish-hook support for pub-sub or auto-caching functionality. " +
-    "Also has a Kombu Publisher with docker RabbitMQ and Redis " +
-    "containers too. Added SQS demo publish and subscribe tools. " +
-    "For background, headless means no task " +
-    "result backend (like mongo). I am planning to glue Django " +
-    "and Jupyter together with this connection framework, and " +
-    "allow workers to process messages from my windows laptop " +
-    "out of a shared broker.",
+    version="1.0.17",
+    description="Celery Connectors",
+    long_description="Messaging examples for Celery and Kombu. " +
+    "Multple publisher-subscriber examples for processing json or " +
+    "pickled messages from Redis, RabbitMQ or AWS SQS. " +
+    "Includes Kombu message processors using native Producer and " +
+    "Consumer classes as well as ConsumerProducerMixin workers for relay " +
+    "publish-hook support to automate pub-sub or auto-caching. " +
+    "Also has includes docker RabbitMQ, Redis and Flower " +
+    "containers too. Functional AWS SQS publish and subscribe tooling.",
     author="Jay Johnson",
     author_email="jay.p.h.johnson@gmail.com",
     url="https://github.com/jay-johnson/celery-connectors",
@@ -86,9 +83,16 @@ setup(
         "./celery_connectors/redis/redis-subscribe-and-read-messages.py",
         "./celery_connectors/redis/redis-publish-messages.py",
         "./celery_connectors/rabbitmq/rabbitmqadmin.py",
-        "./celery_connectors/rabbitmq/list-queues.sh",
-        "./celery_connectors/rabbitmq/list-exchanges.sh",
         "./celery_connectors/rabbitmq/list-bindings.sh",
+        "./celery_connectors/rabbitmq/list-channels.sh",
+        "./celery_connectors/rabbitmq/list-connections.sh",
+        "./celery_connectors/rabbitmq/list-consumers.sh",
+        "./celery_connectors/rabbitmq/list-exchanges.sh",
+        "./celery_connectors/rabbitmq/list-queues.sh",
+        "./celery_connectors/rabbitmq/rmq-close-all-connections.sh",
+        "./celery_connectors/rabbitmq/rmq-trace-on.sh",
+        "./celery_connectors/rabbitmq/rmq-trace-off.sh",
+        "./celery_connectors/rabbitmq/rmq-status.sh",
         "./celery_connectors/scripts/subscribe-to-rabbitmq.sh",
         "./celery_connectors/scripts/subscribe-to-redis.sh",
         "./publish-user-conversion-events-redis.py",
@@ -96,7 +100,9 @@ setup(
         "./start-kombu-message-processor-redis.py",
         "./start-kombu-message-processor-rabbitmq.py",
         "./start-mixin-json-relay.py",
+        "./start-mixin-celery-relay.py",
         "./start-mixin-publisher.py",
+        "./start-mixin-load-test.py",
         "./run_rabbitmq_publisher.py",
         "./run_redis_publisher.py",
         "./kombu_rabbitmq_subscriber.py",
@@ -105,7 +111,8 @@ setup(
         "./kombu_sqs_subscriber.py",
         "./kombu_mixin_subscriber.py",
         "./start-redis-and-rabbitmq.sh",
-        "./stop-redis-and-rabbitmq.sh"
+        "./stop-redis-and-rabbitmq.sh",
+        "./start-ecomm-relay.py"
     ],
     use_2to3=True,
     classifiers=[

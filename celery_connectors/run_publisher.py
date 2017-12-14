@@ -3,11 +3,11 @@ import time
 from kombu import Connection
 from celery_connectors.utils import SUCCESS
 from celery_connectors.utils import calc_backoff_timer
+from celery_connectors.utils import get_percent_done
 import celery_connectors.mixin_send_task_msg
 
 
-name = "pub"
-log = logging.getLogger(name)
+log = logging.getLogger("pub")
 
 
 def run_publisher(broker_url,
@@ -21,10 +21,16 @@ def run_publisher(broker_url,
                   ssl_options={},
                   transport_options={},
                   send_method=None,
+                  silent=True,
+                  publish_silent=False,
+                  log_label="pub",
                   *args,
                   **kwargs):
 
-    log.debug("connecting")
+    verbose = not silent
+
+    if verbose:
+        log.debug("connecting")
 
     with Connection(broker_url,
                     ssl=ssl_options,
@@ -42,12 +48,13 @@ def run_publisher(broker_url,
         if not use_send_method:
             use_send_method = celery_connectors.mixin_send_task_msg.mixin_send_task_msg
 
-        log.debug(("publishing ex={} rk={} "
-                   "msgs={} send_method={}")
-                  .format(exchange,
-                          routing_key,
-                          num_to_send,
-                          use_send_method.__name__))
+        if verbose:
+            log.debug(("publishing ex={} rk={} "
+                       "msgs={} send_method={}")
+                      .format(exchange,
+                              routing_key,
+                              num_to_send,
+                              use_send_method.__name__))
 
         num_sent = 0
         not_done = True
@@ -57,13 +64,28 @@ def run_publisher(broker_url,
 
             cur_msg = msgs[num_sent]
 
+            hide_logs = publish_silent
+            if num_sent > 1 and num_sent % 200 == 0:
+                hide_logs = False
+                log.info(("{} send done "
+                          "msg={}/{} ex={} rk={}")
+                         .format(get_percent_done(
+                                    num_sent,
+                                    num_to_send),
+                                 num_sent,
+                                 num_to_send,
+                                 exchange.name,
+                                 routing_key))
+
             send_res = use_send_method(conn=conn,
                                        data=cur_msg,
                                        exchange=exchange,
                                        routing_key=routing_key,
                                        priority=priority,
                                        priority_routing=priority_routing,
-                                       serializer=serializer)
+                                       serializer=serializer,
+                                       silent=hide_logs,
+                                       log_label=log_label)
 
             if send_res["status"] == SUCCESS:
                 num_fails = 0

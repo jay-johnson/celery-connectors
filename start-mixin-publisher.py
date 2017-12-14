@@ -43,8 +43,13 @@ num_msgs_to_send = 10
 log.info(("Generating messages={}")
          .format(num_msgs_to_send))
 
+relay_task_lag = 2.0
+worker_task_lag = 8.0
+processing_lag_data = {"relay_simulate_processing_lag": worker_task_lag,
+                       "simulate_processing_lag": worker_task_lag}
+
 msgs = build_sample_msgs(num=num_msgs_to_send,
-                         data={"simulated_lag": 1.0})
+                         data=processing_lag_data)
 
 log.info(("Publishing messages={}")
          .format(len(msgs)))

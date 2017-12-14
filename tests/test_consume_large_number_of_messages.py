@@ -1,8 +1,10 @@
 import logging
 from celery_connectors.utils import get_percent_done
+from celery_connectors.log.setup_logging import setup_logging
 from tests.base_test import BaseTestCase
 
-log = logging.getLogger(__file__)
+setup_logging()
+log = logging.getLogger("consume-many")
 
 
 class TestConsumeLargeNumberOfMessages(BaseTestCase):
@@ -44,6 +46,7 @@ class TestConsumeLargeNumberOfMessages(BaseTestCase):
             # end of __init__
 
             def process_message(self, body, message):
+
                 self.num_consumed += 1
 
                 test_id = "unknown"
@@ -177,6 +180,7 @@ class TestConsumeLargeNumberOfMessages(BaseTestCase):
                          queue=self.queue_name,
                          exchange=None,
                          routing_key=None,
+                         forever=False,
                          serializer=self.sub_serializer,
                          heartbeat=60,
                          time_to_wait=2.0)

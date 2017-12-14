@@ -362,8 +362,12 @@ class KombuSubscriber:
 
                     not_done = False
                 # if we're over the retry limits
+
             else:
-                not_done = True
+                if ev("TEST_STOP_DONE", "0") == "1":
+                    not_done = False
+                else:
+                    not_done = True
             # if not forever
 
         # end of hearbeat and event checking

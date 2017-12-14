@@ -1,7 +1,7 @@
 import logging
 from kombu import Connection
 from celery_connectors.utils import ev
-from celery_connectors.relay_worker import RelayWorker
+from celery_connectors.relay_json_to_celery_worker import RelayJSONtoCeleryWorker
 
 
 # Credits and inspirations from these great sources:
@@ -12,21 +12,23 @@ from celery_connectors.relay_worker import RelayWorker
 # https://github.com/Skablam/kombu-examples
 # https://gist.github.com/mlavin/6671079
 
-log = logging.getLogger(ev("APP_NAME", "relay"))
+log = logging.getLogger(ev("APP_NAME", "jtoc"))
 
 
-def run_consumer_relay(broker_url,
-                       ssl_options={},
-                       transport_options={},
-                       task_queues=[],
-                       callback=None,
-                       prefetch_count=1,
-                       relay_broker_url=None,
-                       relay_exchange=None,
-                       relay_routing_key=None,
-                       relay_handler=None,
-                       *args,
-                       **kwargs):
+def run_jtoc_relay(broker_url,
+                   ssl_options={},
+                   transport_options={},
+                   task_queues=[],
+                   callback=None,
+                   prefetch_count=1,
+                   relay_broker_url=None,
+                   relay_backend_url=None,
+                   relay_exchange=None,
+                   relay_routing_key=None,
+                   relay_handler=None,
+                   celery_app=None,
+                   *args,
+                   **kwargs):
 
     if len(broker_url) == 0:
         log.error(("Please pass in a valid broker_url "
@@ -46,20 +48,22 @@ def run_consumer_relay(broker_url,
             log.info(("consuming queues={}")
                      .format(task_queues))
 
-            RelayWorker(
-                    "json-to-json-relay",
+            RelayJSONtoCeleryWorker(
+                    "json-to-celery-relay",
                     conn=conn,
                     task_queues=task_queues,
                     callback=callback,
                     prefetch_count=prefetch_count,
                     relay_broker_url=relay_broker_url,
+                    relay_backend_url=relay_backend_url,
                     relay_exchange=relay_exchange,
                     relay_routing_key=relay_routing_key,
                     relay_handler=relay_handler,
+                    celery_app=celery_app,
                     **kwargs).run()
 
         except KeyboardInterrupt:
             log.info("Received Interrupt - Shutting down")
     # end of with kombu.Connection
 
-# end of run_consumer_relay
+# end of run_jtoc_relay

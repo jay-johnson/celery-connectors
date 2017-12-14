@@ -6,8 +6,7 @@ from celery_connectors.utils import FAILED
 from celery_connectors.utils import ERROR
 
 
-name = "pub_send"
-log = logging.getLogger(name)
+log = logging.getLogger("pub")
 
 
 def mixin_send_task_msg(conn=None,
@@ -17,7 +16,17 @@ def mixin_send_task_msg(conn=None,
                         priority="high",
                         priority_routing={},
                         serializer="json",
+                        silent=False,
+                        log_label="relay",
                         **kwargs):
+
+    """
+    This was built for ProducerConsumerMixins
+    to publish messages using the kombu.Producer
+    https://github.com/celery/kombu/blob/81e52b1a9a6d5e59aa64a26bd6a6021a6d082e1c/kombu/mixins.py#L250
+    """
+
+    verbose = not silent
 
     res = {"status": ERROR,  # non-zero is failure
            "error": ""}
@@ -54,12 +63,13 @@ def mixin_send_task_msg(conn=None,
                        "send a task message"
         return res
 
-    log.info(("{} publish - "
-              "ex={} rk={} sz={}")
-             .format(name,
-                     exchange,
-                     use_routing_key,
-                     serializer))
+    if verbose:
+        log.debug(("{} publish - "
+                   "ex={} rk={} sz={}")
+                  .format(log_label,
+                          exchange,
+                          use_routing_key,
+                          serializer))
 
     last_step = "try"
     try:
@@ -72,6 +82,26 @@ def mixin_send_task_msg(conn=None,
             last_step = "maybe declare={}".format(exchange.name)
             maybe_declare(exchange,
                           producer.channel)
+
+            if verbose:
+                if "org_msg" in payload["data"]:
+                    log.info(("{} - ex={} rk={} msg={} r_id={}")
+                             .format(log_label,
+                                     exchange.name,
+                                     use_routing_key,
+                                     payload["data"]["org_msg"]["msg_id"],
+                                     payload["msg_id"]))
+                elif "msg_id" in payload:
+                    log.info(("ex={} rk={} msg={}")
+                             .format(exchange.name,
+                                     use_routing_key,
+                                     payload["msg_id"]))
+                else:
+                    log.info(("ex={} rk={} body={}")
+                             .format(exchange.name,
+                                     use_routing_key,
+                                     str(payload)[0:30]))
+            # end of verbose
 
             last_step = "publish rk={}".format(routing_key)
             producer.publish(payload,
@@ -87,20 +117,13 @@ def mixin_send_task_msg(conn=None,
         res["error"] = ("{} producer threw "
                         "exception={} ex={} rk={} "
                         "last_step={}").format(
-                            name,
+                            log_label,
                             e,
                             exchange,
                             routing_key,
                             last_step)
 
-        log.error(("{} producer threw "
-                   "exception={} ex={} rk={} "
-                   "last_step={}")
-                  .format(name,
-                          e,
-                          exchange,
-                          routing_key,
-                          last_step))
+        log.error(res["error"])
     # end of try to send
 
     return res

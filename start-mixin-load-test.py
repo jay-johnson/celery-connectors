@@ -3,9 +3,10 @@
 import logging
 from kombu import Exchange, Queue
 from celery_connectors.utils import ev
+from celery_connectors.utils import build_sample_msgs
 from celery_connectors.build_ssl_options import build_ssl_options
 from celery_connectors.log.setup_logging import setup_logging
-from celery_connectors.run_consumer_relay import run_consumer_relay
+from celery_connectors.run_publisher import run_publisher
 
 
 # Credits and inspirations from these great sources:
@@ -17,43 +18,53 @@ from celery_connectors.run_consumer_relay import run_consumer_relay
 # https://gist.github.com/mlavin/6671079
 
 setup_logging()
-name = ev("APP_NAME", "mixin_relay")
+name = ev("APP_NAME", "robopub")
 log = logging.getLogger(name)
 
 
 broker_url = ev("BROKER_URL", "pyamqp://rabbitmq:rabbitmq@localhost:5672//")
 exchange_name = ev("EXCHANGE_NAME", "ecomm.api")
 exchange_type = ev("EXCHANGE_TYPE", "topic")
-queue_name = ev("QUEUE_NAME", "ecomm.api.west")
 routing_key = ev("ROUTING_KEY", "ecomm.api.west")
+queue_name = ev("QUEUE_NAME", "ecomm.api.west")
 prefetch_count = int(ev("PREFETCH_COUNT", "1"))
 priority_routing = {"high": "ecomm.api.west",
                     "low": "ecomm.api.east"}
 use_exchange = Exchange(exchange_name, type=exchange_type)
+use_routing_key = routing_key
 use_queue = Queue(queue_name, exchange=use_exchange, routing_key=routing_key)
 task_queues = [
     use_queue
 ]
 ssl_options = build_ssl_options()
-
-relay_broker_url = ev("RELAY_BROKER_URL", "pyamqp://rabbitmq:rabbitmq@localhost:5672//")
-relay_exchange_name = ev("RELAY_EXCHANGE_NAME", "")
-relay_exchange_type = ev("RELAY_EXCHANGE_TYPE", "direct")
-relay_routing_key = ev("RELAY_ROUTING_KEY", "reporting.payments")
-relay_exchange = Exchange(relay_exchange_name, type=relay_exchange_type)
-
 transport_options = {}
 
-log.info(("Consuming queues={}")
-         .format(len(task_queues)))
+num_msgs_to_send = 20000
+log.info(("Generating messages={}")
+         .format(num_msgs_to_send))
 
-run_consumer_relay(broker_url=broker_url,
-                   ssl_options=ssl_options,
-                   transport_options=transport_options,
-                   task_queues=task_queues,
-                   prefetch_count=prefetch_count,
-                   relay_broker_url=relay_broker_url,
-                   relay_exchange=relay_exchange,
-                   relay_routing_key=relay_routing_key)
+# relay_task_lag = 0.0
+# worker_task_lag = 0.0
+# processing_lag_data = {"relay_simulate_processing_lag": worker_task_lag,
+#                       "simulate_processing_lag": worker_task_lag}
+# msgs = build_sample_msgs(num=num_msgs_to_send,
+#                          data=processing_lag_data)
 
-log.info("Done")
+msgs = build_sample_msgs(num=num_msgs_to_send,
+                         data={})
+
+log.info(("Publishing messages={}")
+         .format(len(msgs)))
+
+run_publisher(broker_url=broker_url,
+              exchange=use_exchange,        # kombu.Exchange object
+              routing_key=use_routing_key,  # string
+              msgs=msgs,
+              ssl_options=ssl_options,
+              transport_options=transport_options,
+              priority="high",
+              priority_routing=priority_routing,
+              silent=True,
+              publish_silent=True)
+
+log.info("Done Publishing")

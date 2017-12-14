@@ -16,8 +16,11 @@ def get_celery_app(name=ev(
                        "CELERY_NAME",
                        "relay"),
                    auth_url=ev(
-                       "BROKER_URL",
+                       "ECOMM_BROKER_URL",
                        "amqp://rabbitmq:rabbitmq@localhost:5672//"),
+                   backend_url=ev(
+                       "ECOMM_BACKEND_URL",
+                       "redis://localhost:6379/10"),
                    ssl_options={},
                    transport_options={},
                    path_to_config_module="ecomm_app.ecommerce.celeryconfig_pub_sub",
@@ -26,7 +29,8 @@ def get_celery_app(name=ev(
 
     # get the Celery application
     app = Celery(name,
-                 broker=auth_url)
+                 broker=auth_url,
+                 backend=backend_url)
 
     app.config_from_object(path_to_config_module,
                            namespace="CELERY")
@@ -51,7 +55,7 @@ def get_celery_app(name=ev(
 
 @task(queue="handle_user_conversion_events")
 def handle_user_conversion_events(body={},
-                                  msg={}):
+                                  source_info={}):
 
     label = "user_conversion_events"
 

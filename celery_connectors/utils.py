@@ -1,5 +1,6 @@
 import os
 import uuid
+import random
 import datetime
 
 
@@ -33,9 +34,16 @@ def calc_backoff_timer(num=0, sleep_secs=2.0):
 # end of calc_backoff_timer
 
 
-def build_msg(data={}, version=1):
+def build_msg_id(max_len=10):
+    return str(uuid.uuid4()).replace("-", "")[0:max_len]
+# end of build_msg_id
+
+
+def build_msg(data={}, version=1, max_id_len=10):
     now = datetime.datetime.now().isoformat()
-    msg = {"msg_id": "{}_{}".format(str(uuid.uuid4()), version),
+    msg_id = "{}_{}".format(build_msg_id(max_id_len), version)
+
+    msg = {"msg_id": msg_id,
            "created": now,
            "data": data}
     return msg
@@ -60,3 +68,24 @@ def build_sample_msgs(num=100,
 
     return msgs
 # end of build_sample_msgs
+
+
+def get_exchange_from_msg(msg):
+    try:
+        return msg.delivery_info["exchange"]
+    except Exception:
+        return ""
+# end of get_exchange_from_msg
+
+
+def get_routing_key_from_msg(msg):
+    try:
+        return msg.delivery_info["routing_key"]
+    except Exception:
+        return ""
+# end of get_routing_key_from_msg
+
+
+def get_random_float(use_min=1.0, use_max=10.0):
+    return random.uniform(use_min, use_max)
+# end of get_random_float

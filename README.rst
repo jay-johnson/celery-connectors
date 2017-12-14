@@ -1,7 +1,9 @@
-Celery Headless Connectors
-==========================
+Celery Connectors
+=================
 
-Celery_ is a great framework for processing messages in a backend message queue service like Redis or RabbitMQ. If you have a queue system with json/pickled messages, and if you do not want to track the internal celery task results, then hopefully this repository will help you out.
+Celery_ is a great framework for processing messages from a message queue broker like Redis or RabbitMQ. If you have a queue with json or pickled messages that you need to consume and process, then hopefully this repository will help you out.
+
+It has multiple examples on setting up working publisher-subscriber messaging workflows using Celery, Celery Bootsteps, Kombu, and Kombu mixins. These examples are focused on finding a starting ground to tune for high availability + performance + reduce the risk of message loss. By using the included docker containers combined with the included load tests, you can start to vet your solution won't wake you up in the middle of the night.
 
 .. _Celery: http://docs.celeryproject.org/en/latest/
 
@@ -67,7 +69,7 @@ This will simulate a json->json relay using kombu mixins:
 
 http://docs.celeryproject.org/projects/kombu/en/latest/reference/kombu.mixins.html
 
-Kombu mixins are a great way to process messages without Celery, and they are resilient to multiple HA scenarios including a complete broker failure. While building this I would load up messages to process, simulate lag before a message was ack-ed and then start/stop the RabbitMQ docker container to see how things reacted. As long as the subscribers can ``declare`` their consuming queues on a fresh broker start-up case, these mixins seem capable of surviving these types of disaster recovery events. By default these builds are going to only read one message out of the queue at a time.
+Kombu mixins are a great way to process messages without Celery, and they are resilient to multiple HA scenarios including a complete broker failures. While building this I would load up messages to process, simulate lag before an ``ack`` and then start/stop the RabbitMQ docker container to see how things reacted. As long as the subscribers can ``declare`` their consuming queues on a fresh broker start-up case, these mixins seem capable of surviving these types of DR events. By default these builds are going to only read one message out of the queue at a time.
 
 Start JSON Relay
 ----------------
@@ -265,17 +267,17 @@ Note: Please run this from the base directory for the repository and source the 
 
 ::
 
-    ./start-ecomm-worker.sh 
+    ./start-ecomm-worker.sh
     
     -------------- celery@ecommerce_subscriber v4.1.0 (latentcall)
     ---- **** ----- 
-    --- * ***  * -- Linux-4.7.4-200.fc24.x86_64-x86_64-with-fedora-24-Twenty_Four 2017-12-10 14:31:37
+    --- * ***  * -- Linux-4.7.4-200.fc24.x86_64-x86_64-with-fedora-24-Twenty_Four 2017-12-14 00:33:02
     -- * - **** --- 
     - ** ---------- [config]
-    - ** ---------- .> app:         ecommerce-worker:0x7f61a973d470
+    - ** ---------- .> app:         ecommerce-worker:0x7f0c23f1c550
     - ** ---------- .> transport:   amqp://rabbitmq:**@localhost:5672//
-    - ** ---------- .> results:     rpc://
-    - *** --- * --- .> concurrency: 4 (prefork)
+    - ** ---------- .> results:     redis://localhost:6379/10
+    - *** --- * --- .> concurrency: 3 (prefork)
     -- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
     --- ***** ----- 
     -------------- [queues]
@@ -285,11 +287,292 @@ Note: Please run this from the base directory for the repository and source the 
     [tasks]
     . ecomm_app.ecommerce.tasks.handle_user_conversion_events
 
-    [2017-12-10 14:31:37,165: INFO/MainProcess] Connected to amqp://rabbitmq:**@127.0.0.1:5672//
-    [2017-12-10 14:31:37,182: INFO/MainProcess] mingle: searching for neighbors
-    [2017-12-10 14:31:38,217: INFO/MainProcess] mingle: all alone
-    [2017-12-10 14:31:38,262: INFO/MainProcess] celery@ecommerce_subscriber ready.
-    [2017-12-10 14:31:41,014: INFO/MainProcess] Events of group {task} enabled by remote.
+    [2017-12-14 00:33:02,243: INFO/MainProcess] Connected to amqp://rabbitmq:**@127.0.0.1:5672//
+    [2017-12-14 00:33:02,260: INFO/MainProcess] mingle: searching for neighbors
+    [2017-12-14 00:33:03,293: INFO/MainProcess] mingle: all alone
+    [2017-12-14 00:33:03,337: INFO/MainProcess] celery@ecommerce_subscriber ready.
+    [2017-12-14 00:33:05,275: INFO/MainProcess] Events of group {task} enabled by remote.
+
+Notice the worker is named ``celery@ecommerce_subscriber`` this is the identifier for viewing the Celery application in Flower:
+
+http://localhost:5555/worker/celery@ecommerce_subscriber (login: admin/admin)
+
+Start Ecomm Relay
+-----------------
+
+This process will consume JSON dictionary messages on the ``ecomm.api.west`` RabbitMQ queue and pass the message to the ecomm Celery app as a ``ecomm_app.ecommerce.tasks.handle_user_conversion_events`` Celery task.
+
+Please start this in a new terminal that has sourced the virtual env: ``source venv/bin/activate``
+
+::
+
+    ./start-mixin-celery-relay.py 
+    2017-12-14 00:36:47,339 - jtoc_relay - INFO - Consuming queues=1
+    2017-12-14 00:36:47,342 - jtoc - INFO - consuming queues=[<unbound Queue ecomm.api.west -> <unbound Exchange ecomm.api(topic)> -> ecomm.api.west>]
+    2017-12-14 00:36:47,353 - kombu.mixins - INFO - Connected to amqp://rabbitmq:**@127.0.0.1:5672//
+    2017-12-14 00:36:47,355 - jtoc - INFO - creating consumer for queues=1 callback=handle_message relay_ex=Exchange ''(direct) relay_rk=reporting.payments prefetch=1
+
+Publish a User Conversion Event to the Ecomm Relay
+--------------------------------------------------
+
+This will use Kombu to publish a JSON dictionary message to the ``ecomm.api.west`` RabbitMQ queue which is monitored by the mixin JSON to Celery relay. This test tool is configured to simulate hypothetical worst-cast lag during the relay + message processing. This is a functional test to ensure everything stays connected and ready for more messages to process.
+
+Please start this in a new terminal that has sourced the virtual env: ``source venv/bin/activate``
+
+::
+
+    ./start-mixin-publisher.py 
+    2017-12-14 00:42:16,849 - robopub - INFO - Generating messages=10
+    2017-12-14 00:42:16,850 - robopub - INFO - Publishing messages=10
+    2017-12-14 00:42:16,866 - pub - INFO - ex=ecomm.api rk=ecomm.api.west msg=46cb24f0d0_1
+    2017-12-14 00:42:16,867 - pub - INFO - ex=ecomm.api rk=ecomm.api.west msg=d2724b75fa_1
+    2017-12-14 00:42:16,867 - pub - INFO - ex=ecomm.api rk=ecomm.api.west msg=e72e09da34_1
+    2017-12-14 00:42:16,869 - pub - INFO - ex=ecomm.api rk=ecomm.api.west msg=f5ec3f0c9d_1
+    2017-12-14 00:42:16,870 - pub - INFO - ex=ecomm.api rk=ecomm.api.west msg=222094db10_1
+    2017-12-14 00:42:16,871 - pub - INFO - ex=ecomm.api rk=ecomm.api.west msg=9bed4cc0e5_1
+    2017-12-14 00:42:16,871 - pub - INFO - ex=ecomm.api rk=ecomm.api.west msg=f66139a9cf_1
+    2017-12-14 00:42:16,872 - pub - INFO - ex=ecomm.api rk=ecomm.api.west msg=94d3a2c7ed_1
+    2017-12-14 00:42:16,873 - pub - INFO - ex=ecomm.api rk=ecomm.api.west msg=b517f87ff4_1
+    2017-12-14 00:42:16,873 - pub - INFO - ex=ecomm.api rk=ecomm.api.west msg=822ef4142c_1
+    2017-12-14 00:42:16,874 - robopub - INFO - Done Publishing
+
+Verify the Ecomm Relay Processed the Conversion Message
+-------------------------------------------------------
+
+After the simulated lag finishes, the logs for the ecomm relay should show something similar to:
+
+::
+
+    2017-12-14 00:42:16,869 - jtoc - INFO - hd msg=46cb24f0d0_1 from_ex=ecomm.api from_rk=ecomm.api.west
+    2017-12-14 00:42:16,870 - jtoc - INFO - relay msg_id=46cb24f0d0_1 body={'msg_id': '46cb24f0d0_1', 've
+    2017-12-14 00:42:16,937 - jtoc - INFO - relay done with msg_id=46cb24f0d0_1
+    2017-12-14 00:42:16,937 - jtoc - INFO - task - ecomm_app.ecommerce.tasks.handle_user_conversion_events - simulating processing lag sleep=8.0 seconds
+    2017-12-14 00:42:24,947 - jtoc - INFO - hd msg=d2724b75fa_1 from_ex=ecomm.api from_rk=ecomm.api.west
+    2017-12-14 00:42:24,947 - jtoc - INFO - relay msg_id=d2724b75fa_1 body={'msg_id': 'd2724b75fa_1', 've
+    2017-12-14 00:42:24,953 - jtoc - INFO - relay done with msg_id=d2724b75fa_1
+    2017-12-14 00:42:24,953 - jtoc - INFO - task - ecomm_app.ecommerce.tasks.handle_user_conversion_events - simulating processing lag sleep=8.0 seconds
+    2017-12-14 00:42:32,962 - jtoc - INFO - hd msg=e72e09da34_1 from_ex=ecomm.api from_rk=ecomm.api.west
+    2017-12-14 00:42:32,963 - jtoc - INFO - relay msg_id=e72e09da34_1 body={'msg_id': 'e72e09da34_1', 've
+    2017-12-14 00:42:32,968 - jtoc - INFO - relay done with msg_id=e72e09da34_1
+    2017-12-14 00:42:32,968 - jtoc - INFO - task - ecomm_app.ecommerce.tasks.handle_user_conversion_events - simulating processing lag sleep=8.0 seconds
+    2017-12-14 00:42:40,982 - jtoc - INFO - hd msg=f5ec3f0c9d_1 from_ex=ecomm.api from_rk=ecomm.api.west
+    2017-12-14 00:42:40,983 - jtoc - INFO - relay msg_id=f5ec3f0c9d_1 body={'msg_id': 'f5ec3f0c9d_1', 've
+    2017-12-14 00:42:41,005 - jtoc - INFO - relay done with msg_id=f5ec3f0c9d_1
+    2017-12-14 00:42:41,006 - jtoc - INFO - task - ecomm_app.ecommerce.tasks.handle_user_conversion_events - simulating processing lag sleep=8.0 seconds
+    2017-12-14 00:42:49,014 - jtoc - INFO - hd msg=222094db10_1 from_ex=ecomm.api from_rk=ecomm.api.west
+    2017-12-14 00:42:49,015 - jtoc - INFO - relay msg_id=222094db10_1 body={'msg_id': '222094db10_1', 've
+    2017-12-14 00:42:49,024 - jtoc - INFO - relay done with msg_id=222094db10_1
+    2017-12-14 00:42:49,024 - jtoc - INFO - task - ecomm_app.ecommerce.tasks.handle_user_conversion_events - simulating processing lag sleep=8.0 seconds
+    2017-12-14 00:42:57,034 - jtoc - INFO - hd msg=9bed4cc0e5_1 from_ex=ecomm.api from_rk=ecomm.api.west
+    2017-12-14 00:42:57,035 - jtoc - INFO - relay msg_id=9bed4cc0e5_1 body={'msg_id': '9bed4cc0e5_1', 've
+    2017-12-14 00:42:57,045 - jtoc - INFO - relay done with msg_id=9bed4cc0e5_1
+    2017-12-14 00:42:57,045 - jtoc - INFO - task - ecomm_app.ecommerce.tasks.handle_user_conversion_events - simulating processing lag sleep=8.0 seconds
+    2017-12-14 00:43:05,052 - jtoc - INFO - hd msg=f66139a9cf_1 from_ex=ecomm.api from_rk=ecomm.api.west
+    2017-12-14 00:43:05,053 - jtoc - INFO - relay msg_id=f66139a9cf_1 body={'msg_id': 'f66139a9cf_1', 've
+    2017-12-14 00:43:05,061 - jtoc - INFO - relay done with msg_id=f66139a9cf_1
+    2017-12-14 00:43:05,061 - jtoc - INFO - task - ecomm_app.ecommerce.tasks.handle_user_conversion_events - simulating processing lag sleep=8.0 seconds
+    2017-12-14 00:43:13,073 - jtoc - INFO - hd msg=94d3a2c7ed_1 from_ex=ecomm.api from_rk=ecomm.api.west
+    2017-12-14 00:43:13,074 - jtoc - INFO - relay msg_id=94d3a2c7ed_1 body={'msg_id': '94d3a2c7ed_1', 've
+    2017-12-14 00:43:13,095 - jtoc - INFO - relay done with msg_id=94d3a2c7ed_1
+    2017-12-14 00:43:13,098 - jtoc - INFO - task - ecomm_app.ecommerce.tasks.handle_user_conversion_events - simulating processing lag sleep=8.0 seconds
+    2017-12-14 00:43:21,105 - jtoc - INFO - hd msg=b517f87ff4_1 from_ex=ecomm.api from_rk=ecomm.api.west
+    2017-12-14 00:43:21,106 - jtoc - INFO - relay msg_id=b517f87ff4_1 body={'msg_id': 'b517f87ff4_1', 've
+    2017-12-14 00:43:21,123 - jtoc - INFO - relay done with msg_id=b517f87ff4_1
+    2017-12-14 00:43:21,124 - jtoc - INFO - task - ecomm_app.ecommerce.tasks.handle_user_conversion_events - simulating processing lag sleep=8.0 seconds
+    2017-12-14 00:43:29,140 - jtoc - INFO - hd msg=822ef4142c_1 from_ex=ecomm.api from_rk=ecomm.api.west
+    2017-12-14 00:43:29,140 - jtoc - INFO - relay msg_id=822ef4142c_1 body={'msg_id': '822ef4142c_1', 've
+    2017-12-14 00:43:29,147 - jtoc - INFO - relay done with msg_id=822ef4142c_1
+    2017-12-14 00:43:29,147 - jtoc - INFO - task - ecomm_app.ecommerce.tasks.handle_user_conversion_events - simulating processing lag sleep=8.0 seconds
+
+Verify the Ecomm Celery Application Processed the Task
+------------------------------------------------------
+
+The logs for the ecomm Celery worker should show something similar to:
+
+::
+
+    [2017-12-14 00:42:16,938: INFO/MainProcess] Received task: ecomm_app.ecommerce.tasks.handle_user_conversion_events[7848f13c-00e1-47d1-b5a5-a8e0dea1dc04]   expires:[2017-12-14 08:47:16.881373+00:00]
+    [2017-12-14 00:42:16,940: INFO/ForkPoolWorker-1] task - user_conversion_events - start body={'subscription_id': 321, 'r_id': '2483467dad_1', 'stripe_id': 876, 'version': 1, 'created': '2017-12-14T00:42:16.870156', 'product_id': 'JJJ', 'account_id': 999, 'msg_id': '46cb24f0d0_1'}
+    [2017-12-14 00:42:16,940: INFO/ForkPoolWorker-1] task - user_conversion_events - done
+    [2017-12-14 00:42:16,942: INFO/ForkPoolWorker-1] Task ecomm_app.ecommerce.tasks.handle_user_conversion_events[7848f13c-00e1-47d1-b5a5-a8e0dea1dc04] succeeded in 0.002363318002608139s: True
+    [2017-12-14 00:42:24,954: INFO/MainProcess] Received task: ecomm_app.ecommerce.tasks.handle_user_conversion_events[4ea2b08f-efa1-46f8-a522-7e2ccde37f4e]   expires:[2017-12-14 08:47:24.950295+00:00]
+    [2017-12-14 00:42:24,955: INFO/ForkPoolWorker-2] task - user_conversion_events - start body={'subscription_id': 321, 'r_id': '88daa66cac_1', 'stripe_id': 876, 'version': 1, 'created': '2017-12-14T00:42:24.947811', 'product_id': 'JJJ', 'account_id': 999, 'msg_id': 'd2724b75fa_1'}
+    [2017-12-14 00:42:24,955: INFO/ForkPoolWorker-2] task - user_conversion_events - done
+    [2017-12-14 00:42:24,960: INFO/ForkPoolWorker-2] Task ecomm_app.ecommerce.tasks.handle_user_conversion_events[4ea2b08f-efa1-46f8-a522-7e2ccde37f4e] succeeded in 0.005053305001638364s: True
+    [2017-12-14 00:42:32,979: INFO/MainProcess] Received task: ecomm_app.ecommerce.tasks.handle_user_conversion_events[496e6c89-e725-433d-8bfa-a0d0decc8e0d]   expires:[2017-12-14 08:47:32.965396+00:00]
+    [2017-12-14 00:42:32,981: INFO/ForkPoolWorker-3] task - user_conversion_events - start body={'subscription_id': 321, 'r_id': '2bb5cdd264_1', 'stripe_id': 876, 'version': 1, 'created': '2017-12-14T00:42:32.963186', 'product_id': 'JJJ', 'account_id': 999, 'msg_id': 'e72e09da34_1'}
+    [2017-12-14 00:42:32,981: INFO/ForkPoolWorker-3] task - user_conversion_events - done
+    [2017-12-14 00:42:32,987: INFO/ForkPoolWorker-3] Task ecomm_app.ecommerce.tasks.handle_user_conversion_events[496e6c89-e725-433d-8bfa-a0d0decc8e0d] succeeded in 0.00654161800048314s: True
+    [2017-12-14 00:42:41,008: INFO/MainProcess] Received task: ecomm_app.ecommerce.tasks.handle_user_conversion_events[f4f7681e-1bca-4798-a73a-89f62317651d]   expires:[2017-12-14 08:47:40.991378+00:00]
+    [2017-12-14 00:42:41,012: INFO/ForkPoolWorker-1] task - user_conversion_events - start body={'subscription_id': 321, 'r_id': '5365dc6b70_1', 'stripe_id': 876, 'version': 1, 'created': '2017-12-14T00:42:40.983174', 'product_id': 'JJJ', 'account_id': 999, 'msg_id': 'f5ec3f0c9d_1'}
+    [2017-12-14 00:42:41,012: INFO/ForkPoolWorker-1] task - user_conversion_events - done
+    [2017-12-14 00:42:41,014: INFO/ForkPoolWorker-1] Task ecomm_app.ecommerce.tasks.handle_user_conversion_events[f4f7681e-1bca-4798-a73a-89f62317651d] succeeded in 0.002192696003476158s: True
+    [2017-12-14 00:42:49,026: INFO/MainProcess] Received task: ecomm_app.ecommerce.tasks.handle_user_conversion_events[35d5ed9e-aacf-4b05-bae0-f74b8df83ad2]   expires:[2017-12-14 08:47:49.017937+00:00]
+    [2017-12-14 00:42:49,028: INFO/ForkPoolWorker-2] task - user_conversion_events - start body={'subscription_id': 321, 'r_id': 'f369b4c0e0_1', 'stripe_id': 876, 'version': 1, 'created': '2017-12-14T00:42:49.015218', 'product_id': 'JJJ', 'account_id': 999, 'msg_id': '222094db10_1'}
+    [2017-12-14 00:42:49,028: INFO/ForkPoolWorker-2] task - user_conversion_events - done
+    [2017-12-14 00:42:49,031: INFO/ForkPoolWorker-2] Task ecomm_app.ecommerce.tasks.handle_user_conversion_events[35d5ed9e-aacf-4b05-bae0-f74b8df83ad2] succeeded in 0.00297039799625054s: True
+    [2017-12-14 00:42:57,047: INFO/MainProcess] Received task: ecomm_app.ecommerce.tasks.handle_user_conversion_events[4c9137a1-e4c0-44f2-852d-b96e8004cf52]   expires:[2017-12-14 08:47:57.040272+00:00]
+    [2017-12-14 00:42:57,050: INFO/ForkPoolWorker-3] task - user_conversion_events - start body={'subscription_id': 321, 'r_id': '81646a1d3e_1', 'stripe_id': 876, 'version': 1, 'created': '2017-12-14T00:42:57.035385', 'product_id': 'JJJ', 'account_id': 999, 'msg_id': '9bed4cc0e5_1'}
+    [2017-12-14 00:42:57,051: INFO/ForkPoolWorker-3] task - user_conversion_events - done
+    [2017-12-14 00:42:57,053: INFO/ForkPoolWorker-3] Task ecomm_app.ecommerce.tasks.handle_user_conversion_events[4c9137a1-e4c0-44f2-852d-b96e8004cf52] succeeded in 0.0024162650006473996s: True
+    [2017-12-14 00:43:05,061: INFO/MainProcess] Received task: ecomm_app.ecommerce.tasks.handle_user_conversion_events[c0eafd5b-803a-4550-9bba-961d7ab7f4cc]   expires:[2017-12-14 08:48:05.056204+00:00]
+    [2017-12-14 00:43:05,064: INFO/ForkPoolWorker-1] task - user_conversion_events - start body={'subscription_id': 321, 'r_id': '360be5bb5d_1', 'stripe_id': 876, 'version': 1, 'created': '2017-12-14T00:43:05.052968', 'product_id': 'JJJ', 'account_id': 999, 'msg_id': 'f66139a9cf_1'}
+    [2017-12-14 00:43:05,065: INFO/ForkPoolWorker-1] task - user_conversion_events - done
+    [2017-12-14 00:43:05,067: INFO/ForkPoolWorker-1] Task ecomm_app.ecommerce.tasks.handle_user_conversion_events[c0eafd5b-803a-4550-9bba-961d7ab7f4cc] succeeded in 0.003034861001651734s: True
+    [2017-12-14 00:43:13,100: INFO/MainProcess] Received task: ecomm_app.ecommerce.tasks.handle_user_conversion_events[b402c99b-b998-48b8-9cb8-bb49b1289032]   expires:[2017-12-14 08:48:13.081228+00:00]
+    [2017-12-14 00:43:13,106: INFO/ForkPoolWorker-2] task - user_conversion_events - start body={'subscription_id': 321, 'r_id': '5d4d3f1277_1', 'stripe_id': 876, 'version': 1, 'created': '2017-12-14T00:43:13.074799', 'product_id': 'JJJ', 'account_id': 999, 'msg_id': '94d3a2c7ed_1'}
+    [2017-12-14 00:43:13,107: INFO/ForkPoolWorker-2] task - user_conversion_events - done
+    [2017-12-14 00:43:13,110: INFO/ForkPoolWorker-2] Task ecomm_app.ecommerce.tasks.handle_user_conversion_events[b402c99b-b998-48b8-9cb8-bb49b1289032] succeeded in 0.004359455000667367s: True
+    [2017-12-14 00:43:21,127: INFO/MainProcess] Received task: ecomm_app.ecommerce.tasks.handle_user_conversion_events[a57b8b49-349a-44d3-99fc-12f96d69d489]   expires:[2017-12-14 08:48:21.114216+00:00]
+    [2017-12-14 00:43:21,129: INFO/ForkPoolWorker-3] task - user_conversion_events - start body={'subscription_id': 321, 'r_id': '97ec19ac8d_1', 'stripe_id': 876, 'version': 1, 'created': '2017-12-14T00:43:21.106783', 'product_id': 'JJJ', 'account_id': 999, 'msg_id': 'b517f87ff4_1'}
+    [2017-12-14 00:43:21,130: INFO/ForkPoolWorker-3] task - user_conversion_events - done
+    [2017-12-14 00:43:21,133: INFO/ForkPoolWorker-3] Task ecomm_app.ecommerce.tasks.handle_user_conversion_events[a57b8b49-349a-44d3-99fc-12f96d69d489] succeeded in 0.003475217003142461s: True
+    [2017-12-14 00:43:29,150: INFO/MainProcess] Received task: ecomm_app.ecommerce.tasks.handle_user_conversion_events[da0c3a78-cac7-4b78-8a32-568d8a5c7362]   expires:[2017-12-14 08:48:29.143188+00:00]
+    [2017-12-14 00:43:29,152: INFO/ForkPoolWorker-1] task - user_conversion_events - start body={'subscription_id': 321, 'r_id': '6f3fe96baf_1', 'stripe_id': 876, 'version': 1, 'created': '2017-12-14T00:43:29.140647', 'product_id': 'JJJ', 'account_id': 999, 'msg_id': '822ef4142c_1'}
+    [2017-12-14 00:43:29,152: INFO/ForkPoolWorker-1] task - user_conversion_events - done
+    [2017-12-14 00:43:29,155: INFO/ForkPoolWorker-1] Task ecomm_app.ecommerce.tasks.handle_user_conversion_events[da0c3a78-cac7-4b78-8a32-568d8a5c7362] succeeded in 0.0034106169987353496s: True
+
+Benchmark the JSON to Celery Relay Service
+------------------------------------------
+
+The ``start-mixin-load-test.py`` load test will send in 20,000 messages with no simulated lag. This may take a few moments to finish so you might want to open a new terminal and source the virtual env to run ``watch -n5 list-queues.sh`` for tracking the test's progress.
+
+::
+
+    ./start-mixin-load-test.py 
+    2017-12-14 00:48:06,217 - robopub - INFO - Generating messages=20000
+    2017-12-14 00:48:06,694 - robopub - INFO - Publishing messages=20000
+    2017-12-14 00:48:06,821 - pub - INFO - 1.00 send done msg=200/20000 ex=ecomm.api rk=ecomm.api.west
+    2017-12-14 00:48:06,821 - pub - INFO - ex=ecomm.api rk=ecomm.api.west msg=69ae9e80bf_1
+    2017-12-14 00:48:06,916 - pub - INFO - 2.00 send done msg=400/20000 ex=ecomm.api rk=ecomm.api.west
+    2017-12-14 00:48:06,917 - pub - INFO - ex=ecomm.api rk=ecomm.api.west msg=43c153a155_1
+    2017-12-14 00:48:07,015 - pub - INFO - 3.00 send done msg=600/20000 ex=ecomm.api rk=ecomm.api.west
+    2017-12-14 00:48:07,016 - pub - INFO - ex=ecomm.api rk=ecomm.api.west msg=1978ebf438_1
+    2017-12-14 00:48:07,075 - pub - INFO - 4.00 send done msg=800/20000 ex=ecomm.api rk=ecomm.api.west
+    2017-12-14 00:48:07,075 - pub - INFO - ex=ecomm.api rk=ecomm.api.west msg=3dbae69bb2_1
+    2017-12-14 00:48:07,157 - pub - INFO - 5.00 send done msg=1000/20000 ex=ecomm.api rk=ecomm.api.west
+    2017-12-14 00:48:07,158 - pub - INFO - ex=ecomm.api rk=ecomm.api.west msg=a5dda8b23a_1
+    2017-12-14 00:48:07,240 - pub - INFO - 6.00 send done msg=1200/20000 ex=ecomm.api rk=ecomm.api.west
+    2017-12-14 00:48:07,241 - pub - INFO - ex=ecomm.api rk=ecomm.api.west msg=138a5c7939_1
+    2017-12-14 00:48:07,310 - pub - INFO - 7.00 send done msg=1400/20000 ex=ecomm.api rk=ecomm.api.west
+    2017-12-14 00:48:07,311 - pub - INFO - ex=ecomm.api rk=ecomm.api.west msg=a1c6315380_1
+    2017-12-14 00:48:07,374 - pub - INFO - 8.00 send done msg=1600/20000 ex=ecomm.api rk=ecomm.api.west
+    2017-12-14 00:48:07,374 - pub - INFO - ex=ecomm.api rk=ecomm.api.west msg=f1cf343847_1
+
+Sample output during that load test:
+
+::
+
+    list-queues.sh 
+
+    Listing Queues broker=localhost:15672
+
++-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+|                     name                      | durable | auto_delete | consumers | messages | messages_ready | messages_unacknowledged |
++-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+| celery                                        | True    | False       | 1         | 0        | 0              | 0                       |
++-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+| celery@ecommerce_subscriber.celery.pidbox     | False   | True        | 1         | 0        | 0              | 0                       |
++-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+| celeryev.28b0b3a0-2e82-4e16-b829-a2835763b3cb | False   | True        | 1         | 0        | 0              | 0                       |
++-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+| celeryev.b019122d-0dd3-48c0-8c0a-b82f4fb8d4d7 | False   | True        | 1         | 0        | 0              | 0                       |
++-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+| ecomm.api.west                                | True    | False       | 1         | 17810    | 17809          | 1                       |
++-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+
+View the Ecomm Celery Worker Tasks in Flower
+--------------------------------------------
+
+You can also watch progress using the Flower Celery monitoring application that's included in the docker compose file.
+
+Here's a snapshot of my 20,000 + 10 messages using the ``celery@ecommerce_subscriber`` Celery worker.
+
+.. image:: https://github.com/jay-johnson/celery-connectors/blob/master/_images/flower-jtoc-relay-results.png
+    :align: center
+
+The ``Processed`` and ``Succeeded`` task counts for the ``celery@ecommerce_subscriber`` should increment each time a User Conversion Event is published by the ecomm relay to the ecomm worker.
+
+http://localhost:5555/dashboard (login: admin/admin)
+
+View specific task details:
+
+http://localhost:5555/tasks
+
+Stop the Ecomm Demo
+-------------------
+
+Restart the docker containers to a good, clean state.
+
+Stop:
+
+::
+    
+    stop-redis-and-rabbitmq.sh 
+    Stopping redis and rabbitmq
+    Stopping celrabbit1      ... done
+    Stopping celredis1       ... done
+    Stopping celflowerredis  ... done
+    Stopping celflowerrabbit ... done
+
+Start:
+
+::
+
+    start-redis-and-rabbitmq.sh 
+    Starting redis and rabbitmq
+    Creating celrabbit1 ... done
+
+Verify the Relay Service Automatically Healed
+---------------------------------------------
+
+Want to try the load test again now that we just simulated a broker outage for all of the messaging and monitoring containers?
+
+::
+
+    ./start-mixin-load-test.py 
+
+If not, then stop the ecomm relay and ecomm worker terminal sessions using: ``ctrl + c``
+
+Running an Ecommerce JSON-to-Celery Relay Service - Example 2
+=============================================================
+
+This example uses just kombu producers and consumers instead of the kombu.ConsumerProducerMixin to run the same relay as the example above.
+
+Start Ecommerce Celery Worker
+-----------------------------
+
+Start a Celery worker for an existing ecommerce application from a hypothetical Django or Flask server.
+
+Note: Please run this from the base directory for the repository and source the virtual env: ``source venv/bin/activate``
+
+::
+
+    ./start-ecomm-worker.sh
+    
+    -------------- celery@ecommerce_subscriber v4.1.0 (latentcall)
+    ---- **** ----- 
+    --- * ***  * -- Linux-4.7.4-200.fc24.x86_64-x86_64-with-fedora-24-Twenty_Four 2017-12-14 00:33:02
+    -- * - **** --- 
+    - ** ---------- [config]
+    - ** ---------- .> app:         ecommerce-worker:0x7f0c23f1c550
+    - ** ---------- .> transport:   amqp://rabbitmq:**@localhost:5672//
+    - ** ---------- .> results:     redis://localhost:6379/10
+    - *** --- * --- .> concurrency: 3 (prefork)
+    -- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+    --- ***** ----- 
+    -------------- [queues]
+                    .> celery           exchange=celery(direct) key=celery
+                    
+
+    [tasks]
+    . ecomm_app.ecommerce.tasks.handle_user_conversion_events
+
+    [2017-12-14 00:33:02,243: INFO/MainProcess] Connected to amqp://rabbitmq:**@127.0.0.1:5672//
+    [2017-12-14 00:33:02,260: INFO/MainProcess] mingle: searching for neighbors
+    [2017-12-14 00:33:03,293: INFO/MainProcess] mingle: all alone
+    [2017-12-14 00:33:03,337: INFO/MainProcess] celery@ecommerce_subscriber ready.
+    [2017-12-14 00:33:05,275: INFO/MainProcess] Events of group {task} enabled by remote.
 
 Notice the worker is named ``celery@ecommerce_subscriber`` this is the identifier for viewing the Celery application in Flower:
 
@@ -304,11 +587,10 @@ Please start this in a new terminal that has sourced the virtual env: ``source v
 
 ::
 
-    ./start-ecomm-relay.py 
-    2017-12-10 14:34:20,290 - ecomm-relay-loader - INFO - Start - ecomm-relay
-    2017-12-10 14:34:20,290 - message-processor - INFO - ecomm-relay START - consume_queue=user.events.conversions rk=reporting.accounts callback=relay_callback
-    2017-12-10 14:34:20,290 - kombu-subscriber - INFO - setup routing
-    2017-12-10 14:34:20,314 - kombu-subscriber - INFO - msg-sub - kombu.subscriber queues=user.events.conversions consuming with callback=relay_callback
+    ./start-ecomm-relay.py
+    2017-12-14 00:33:36,943 - ecomm-relay-loader - INFO - Start - ecomm-relay
+    2017-12-14 00:33:36,944 - message-processor - INFO - ecomm-relay START - consume_queue=user.events.conversions rk=reporting.accounts callback=relay_callback
+    2017-12-14 00:33:36,944 - kombu-subscriber - INFO - setup routing
 
 Publish a User Conversion Event to the Ecomm Relay
 --------------------------------------------------
@@ -321,7 +603,7 @@ Please start this in a new terminal that has sourced the virtual env: ``source v
 
     publish-user-conversion-events-rabbitmq.py 
     INFO:publish-user-conversion-events:Start - publish-user-conversion-events
-    INFO:publish-user-conversion-events:Sending user conversion event msg={'account_id': 777, 'product_id': 'XYZ', 'stripe_id': 999, 'created': '2017-12-10T14:40:54.733901', 'subscription_id': 888} ex=user.events rk=user.events.conversions
+    INFO:publish-user-conversion-events:Sending user conversion event msg={'product_id': 'XYZ', 'stripe_id': 999, 'account_id': 777, 'created': '2017-12-14T00:33:55.826534', 'subscription_id': 888} ex=user.events rk=user.events.conversions
     INFO:kombu-publisher:SEND - exch=user.events rk=user.events.conversions
     INFO:publish-user-conversion-events:End - publish-user-conversion-events sent=True
 
@@ -332,9 +614,9 @@ The logs for the ecomm relay should show something similar to:
 
 ::
 
-    2017-12-10 14:40:54,774 - ecomm-relay-loader - INFO - Sending broker=amqp://rabbitmq:rabbitmq@localhost:5672// body={'msg_id': '3b2aa0e0-2b68-421c-9a4f-3ad9a30a5abc', 'stripe_id': 876, 'subscription_id': 321, 'created': '2017-12-10T14:40:54.772966', 'version': 1, 'org_msg': {'created': '2017-12-10T14:40:54.733901', 'stripe_id': 999, 'subscription_id': 888, 'account_id': 777, 'product_id': 'XYZ'}, 'account_id': 999, 'product_id': 'JJJ'}
-    2017-12-10 14:40:54,840 - ecomm-relay-loader - INFO - Done with msg_id=3b2aa0e0-2b68-421c-9a4f-3ad9a30a5abc result=True
-    
+    2017-12-14 00:33:55,865 - ecomm-relay-loader - INFO - Sending broker=amqp://rabbitmq:rabbitmq@localhost:5672// body={'org_msg': {'stripe_id': 999, 'created': '2017-12-14T00:33:55.826534', 'product_id': 'XYZ', 'subscription_id': 888, 'account_id': 777}, 'stripe_id': 876, 'version': 1, 'account_id': 999, 'msg_id': '7a73a74d-f539-4634-8a03-2aa2a5fd8d5e', 'created': '2017-12-14T00:33:55.863870', 'product_id': 'JJJ', 'subscription_id': 321}
+    2017-12-14 00:33:55,928 - ecomm-relay-loader - INFO - Done with msg_id=7a73a74d-f539-4634-8a03-2aa2a5fd8d5e result=True
+
 Verify the Ecomm Celery Application Processed the Task
 ------------------------------------------------------
 
@@ -342,10 +624,47 @@ The logs for the ecomm Celery worker should show something similar to:
 
 ::
 
-    [2017-12-10 14:40:54,815: INFO/MainProcess] Received task: ecomm_app.ecommerce.tasks.handle_user_conversion_events[737a1b0a-20f9-4ef5-ade8-d5f437e4fbb3]  
-    [2017-12-10 14:40:54,817: INFO/ForkPoolWorker-3] task - user_conversion_events - start body={'account_id': 999, 'product_id': 'JJJ', 'org_msg': {'account_id': 777, 'product_id': 'XYZ', 'created': '2017-12-10T14:40:54.733901', 'subscription_id': 888, 'stripe_id': 999}, 'created': '2017-12-10T14:40:54.772966', 'stripe_id': 876, 'subscription_id': 321, 'msg_id': '3b2aa0e0-2b68-421c-9a4f-3ad9a30a5abc', 'version': 1}
-    [2017-12-10 14:40:54,817: INFO/ForkPoolWorker-3] task - user_conversion_events - done
-    [2017-12-10 14:40:54,839: INFO/ForkPoolWorker-3] Task ecomm_app.ecommerce.tasks.handle_user_conversion_events[737a1b0a-20f9-4ef5-ade8-d5f437e4fbb3] succeeded in 0.022475273000054585s: True
+    [2017-12-14 00:33:55,919: INFO/MainProcess] Received task: ecomm_app.ecommerce.tasks.handle_user_conversion_events[9ee85235-0ffb-4c46-9cd7-0bd2c153bd9b]  
+    [2017-12-14 00:33:55,921: INFO/ForkPoolWorker-1] task - user_conversion_events - start body={'subscription_id': 321, 'stripe_id': 876, 'org_msg': {'subscription_id': 888, 'stripe_id': 999, 'created': '2017-12-14T00:33:55.826534', 'product_id': 'XYZ', 'account_id': 777}, 'version': 1, 'created': '2017-12-14T00:33:55.863870', 'product_id': 'JJJ', 'account_id': 999, 'msg_id': '7a73a74d-f539-4634-8a03-2aa2a5fd8d5e'}
+    [2017-12-14 00:33:55,921: INFO/ForkPoolWorker-1] task - user_conversion_events - done
+    [2017-12-14 00:33:55,926: INFO/ForkPoolWorker-1] Task ecomm_app.ecommerce.tasks.handle_user_conversion_events[9ee85235-0ffb-4c46-9cd7-0bd2c153bd9b] succeeded in 0.0055257950007217005s: True
+
+View the Ecomm Celery Worker Tasks in Flower
+--------------------------------------------
+
+The ``Processed`` and ``Succeeded`` task counts for the ``celery@ecommerce_subscriber`` should increment each time a User Conversion Event is published by the ecomm relay to the ecomm worker.
+
+http://localhost:5555/dashboard
+
+View specific task details:
+
+http://localhost:5555/tasks
+
+Stop the Ecomm Demo
+-------------------
+
+In the ecomm relay and ecomm worker terminal sessions use: ``ctrl + c`` to stop the processes.
+
+Restart the docker containers to a good, clean state.
+
+Stop:
+
+::
+    
+    stop-redis-and-rabbitmq.sh 
+    Stopping redis and rabbitmq
+    Stopping celrabbit1      ... done
+    Stopping celredis1       ... done
+    Stopping celflowerredis  ... done
+    Stopping celflowerrabbit ... done
+
+Start:
+
+::
+
+    start-redis-and-rabbitmq.sh 
+    Starting redis and rabbitmq
+    Creating celrabbit1 ... done
 
 View the Ecomm Celery Worker Tasks in Flower
 --------------------------------------------
@@ -388,7 +707,7 @@ Start:
     Creating celflowerredis ... done
 
 Redis Message Processing Example
---------------------------------
+================================
 
 This example uses Celery bootsteps (http://docs.celeryproject.org/en/latest/userguide/extending.html) to run a standalone, headless subscriber that consumes messages from a Redis key which emulates a RabbitMQ queue. Kombu publishes the message to the Redis key.
 
@@ -443,7 +762,7 @@ This example uses Celery bootsteps (http://docs.celeryproject.org/en/latest/user
         127.0.0.1:6379> 
 
 RabbitMQ Message Processing Example
------------------------------------
+===================================
 
 This example uses Celery bootsteps (http://docs.celeryproject.org/en/latest/userguide/extending.html) to run a standalone, headless subscriber that consumes routed messages. It will set up a RabbitMQ topic exchange with a queue that is bound using a routing key. Once the entities are available in RabbitMQ, Kombu publishes the message to the exchange and RabbitMQ provides the messaging facility to route the messages to the subscribed celery workers' queue.
 

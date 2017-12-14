@@ -1,11 +1,12 @@
 import logging
+import datetime
 import time
 from kombu.mixins import ConsumerProducerMixin
+from celery import Celery
 from celery_connectors.utils import ev
 from celery_connectors.utils import build_msg
 from celery_connectors.utils import get_exchange_from_msg
 from celery_connectors.utils import get_routing_key_from_msg
-from celery_connectors.run_publisher import run_publisher
 
 
 # Credits and inspirations from these great sources:
@@ -16,22 +17,23 @@ from celery_connectors.run_publisher import run_publisher
 # https://github.com/Skablam/kombu-examples
 # https://gist.github.com/mlavin/6671079
 
-log = logging.getLogger(ev("APP_NAME", "relay"))
+log = logging.getLogger(ev("APP_NAME", "jtoc"))
 
 
-class RelayWorker(ConsumerProducerMixin):
+class RelayJSONtoCeleryWorker(ConsumerProducerMixin):
 
     def __init__(self,
-                 name="relay",
+                 name="jtoc",
                  conn=None,
                  callback=None,
                  task_queues=[],
                  prefetch_count=1,
                  relay_exchange=None,
-                 relay_exchange_type=None,
                  relay_routing_key=None,
+                 relay_exchange_type=None,
                  relay_queue=None,
                  relay_broker_url=None,
+                 relay_backend_url=None,
                  relay_ssl_options={},
                  relay_transport_options={},
                  relay_serializer="json",
@@ -43,7 +45,8 @@ class RelayWorker(ConsumerProducerMixin):
                  on_relay_ex_should_reject=False,
                  on_relay_ex_should_requeue=True,
                  silent=True,
-                 publish_silent=False):
+                 publish_silent=False,
+                 celery_app=None):
 
         self.name = name
         self.relay_name = "{}-pub".format(self.name)
@@ -54,6 +57,7 @@ class RelayWorker(ConsumerProducerMixin):
         self.use_relay_handler = self.handle_relay
 
         self.relay_broker_url = relay_broker_url
+        self.relay_backend_url = relay_backend_url
         self.relay_ssl_options = relay_ssl_options
         self.relay_transport_options = relay_transport_options
         self.relay_exchange = relay_exchange
@@ -72,6 +76,8 @@ class RelayWorker(ConsumerProducerMixin):
 
         self.verbose = not silent
         self.publish_silent = publish_silent
+
+        self.celery_app = celery_app
 
         if callback:
             self.use_callback = callback
@@ -110,10 +116,13 @@ class RelayWorker(ConsumerProducerMixin):
                              self.prefetch_count))
 
         # http://docs.celeryproject.org/projects/kombu/en/latest/userguide/consumers.html
-        return [Consumer(queues=self.task_queues,
-                         prefetch_count=self.prefetch_count,
-                         auto_declare=True,
-                         callbacks=[self.use_callback])]
+        queue_builder_consumer = \
+            Consumer(queues=self.task_queues,
+                     prefetch_count=self.prefetch_count,
+                     auto_declare=True,
+                     callbacks=[self.use_callback])
+
+        return [queue_builder_consumer]
     # end of get_consumers
 
     def send_response_to_broker(
@@ -220,6 +229,7 @@ class RelayWorker(ConsumerProducerMixin):
         how they 'handle_relay'
         """
 
+        task_result = None
         last_step = "validating"
 
         if not relay_exchange and not relay_routing_key:
@@ -232,7 +242,6 @@ class RelayWorker(ConsumerProducerMixin):
         try:
 
             last_step = "setting up base relay payload"
-
             base_relay_payload = {"org_msg": body,
                                   "relay_name": self.name}
 
@@ -242,11 +251,21 @@ class RelayWorker(ConsumerProducerMixin):
             last_step = "building relay payload"
             relay_payload = build_msg(base_relay_payload)
 
-            source_info = {"relay": self.name,
-                           "src_exchange": src_exchange,
-                           "src_routing_key": src_routing_key}
+            if self.verbose:
+                log.info(("relay ex={} rk={} id={}")
+                         .format(relay_exchange,
+                                 relay_routing_key,
+                                 relay_payload["msg_id"]))
 
-            relay_payload["source_info"] = source_info
+            last_step = "setting up task"
+
+            task_name = ev("RELAY_TASK_NAME",
+                           "ecomm_app.ecommerce.tasks." +
+                           "handle_user_conversion_events")
+            if "task_name" in body:
+                task_name = body["task_name"]
+
+            now = datetime.datetime.now().isoformat()
 
             use_msg_id = ""
             if "msg_id" in body:
@@ -254,26 +273,89 @@ class RelayWorker(ConsumerProducerMixin):
             else:
                 use_msg_id = relay_payload["msg_id"]
 
-            task_name = ""
-            if "task_name" in body:
-                task_name = body["task_name"]
+            source_info = {"relay": self.name,
+                           "src_exchange": src_exchange,
+                           "src_routing_key": src_routing_key}
+
+            publish_body = {"account_id": 999,
+                            "subscription_id": 321,
+                            "stripe_id": 876,
+                            "created": now,
+                            "product_id": "JJJ",
+                            "version": 1,
+                            "r_id": relay_payload["msg_id"],
+                            "msg_id": use_msg_id}
 
             if self.verbose:
-                log.info(("relay ex={} rk={} id={}")
-                         .format(relay_exchange,
-                                 relay_routing_key,
-                                 use_msg_id))
+                log.info(("relay msg_id={} body={} "
+                          "broker={} backend={}")
+                         .format(use_msg_id,
+                                 publish_body,
+                                 self.relay_broker_url,
+                                 self.relay_transport_options))
+            else:
+                log.info(("relay msg_id={} body={}")
+                         .format(use_msg_id,
+                                 str(publish_body)[0:30]))
 
-            run_publisher(broker_url=self.relay_broker_url,
-                          msgs=[relay_payload],
-                          exchange=relay_exchange,
-                          routing_key=relay_routing_key,
-                          ssl_options=self.relay_ssl_options,
-                          transport_options=self.relay_transport_options,
-                          serializer=self.relay_serializer,
-                          silent=not self.verbose,
-                          publish_silent=self.publish_silent,
-                          log_label=self.relay_name)
+            last_step = "send start - app"
+
+            # http://docs.celeryproject.org/en/latest/reference/celery.html#celery.Celery
+            app = Celery(broker=self.relay_broker_url,
+                         backend=self.relay_backend_url,
+                         transport_otions=self.relay_transport_options,
+                         task_ignore_result=True)  # needed for cleaning up task results
+
+            # these are targeted at optimizing processing on long-running tasks
+            # while increasing reliability
+
+            # http://docs.celeryproject.org/en/latest/userguide/configuration.html#std:setting-worker_prefetch_multiplier
+            app.conf.worker_prefetch_multiplier = 1
+            # http://docs.celeryproject.org/en/latest/userguide/configuration.html#std:setting-broker_heartbeat
+            app.conf.broker_heartbeat = 240  # seconds
+            # http://docs.celeryproject.org/en/latest/userguide/configuration.html#std:setting-broker_connection_max_retries
+            app.conf.broker_connection_max_retries = None
+            # http://docs.celeryproject.org/en/latest/userguide/configuration.html#std:setting-task_acks_late
+            app.conf.task_acks_late = True
+
+            # http://docs.celeryproject.org/en/latest/userguide/calling.html#calling-retry
+            task_publish_retry_policy = {"interval_max": 1,
+                                         "max_retries": 120,     # None - forever
+                                         "interval_start": 0.1,
+                                         "interval_step": 0.2}
+            app.conf.task_publish_retry_policy = task_publish_retry_policy
+
+            last_step = "send start - task={}".format(task_name)
+            with app.producer_or_acquire(producer=None) as producer:
+                """
+                http://docs.celeryproject.org/en/latest/reference/celery.app.task.html#celery.app.task.Task.apply_async
+                retry (bool) – If enabled sending of the task message will be
+                            retried in the event of connection loss or failure.
+                            Default is taken from the task_publish_retry setting.
+                            Note that you need to handle the producer/connection
+                            manually for this to work.
+
+                With a redis backend connection on
+                restore of a broker the first time it appears to
+                hang here indefinitely:
+
+                task_result.get()
+
+                Please avoid getting the relay task results
+                until this is fixed
+                """
+
+                task_result = app.send_task(task_name,
+                                            (publish_body, source_info),
+                                            retry=True,
+                                            producer=producer,
+                                            expires=300)
+            # end of app producer block
+
+            last_step = "send done - task={}".format(task_name)
+            if task_result:
+                log.info(("relay done with msg_id={}")
+                         .format(body["msg_id"]))
 
             if "relay_simulate_processing_lag" in body["data"]:
                 relay_sleep_duration = \
@@ -300,6 +382,7 @@ class RelayWorker(ConsumerProducerMixin):
                                      str(body)[0:30]))
 
             # end of logging
+
         except Exception as e:
             log.error(("Task Relay failed: with ex={} when sending "
                        "to relay_exchange={} relay_routing_key={} "
@@ -377,7 +460,9 @@ class RelayWorker(ConsumerProducerMixin):
                                         message=message,
                                         relay_exchange=self.relay_exchange,
                                         relay_routing_key=self.relay_routing_key,
-                                        serializer=self.relay_serializer)
+                                        serializer=self.relay_serializer,
+                                        src_exchange=src_exchange,
+                                        src_routing_key=src_routing_key)
                     last_step = "relay check - handler done"
                     relay_ran = True
                 else:
@@ -415,4 +500,4 @@ class RelayWorker(ConsumerProducerMixin):
 
     # end of handle_message
 
-# end of RelayWorker
+# end of RelayJSONtoCeleryWorker

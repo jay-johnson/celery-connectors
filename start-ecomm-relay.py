@@ -24,11 +24,14 @@ def relay_callback(body, message):
 
     pub_auth_url = ev("RELAY_WORKER_BROKER_URL",
                       "amqp://rabbitmq:rabbitmq@localhost:5672//")
+    pub_backend_url = ev("RELAY_BACKEND_URL",
+                         "redis://localhost:6379/12")
     path_to_config_module = "ecomm_app.ecommerce.celeryconfig_pub_sub"
 
     app = ecomm_app.ecommerce.tasks.get_celery_app(
             name="demo",
             auth_url=pub_auth_url,
+            backend_url=pub_backend_url,
             path_to_config_module=path_to_config_module)
 
     task_name = "ecomm_app.ecommerce.tasks.handle_user_conversion_events"
@@ -42,15 +45,15 @@ def relay_callback(body, message):
             "org_msg": body,
             "msg_id": str(uuid.uuid4())}
 
-    source_id = {"msg_proc": ev("RELAY_NAME",
-                                "ecomm_relay")}
+    source_info = {"msg_proc": ev("RELAY_NAME",
+                                  "ecomm_relay")}
 
     log.info(("Sending broker={} "
               "body={}")
              .format(app.conf.broker_url,
                      body))
 
-    result = app.send_task(task_name, (body, source_id))
+    result = app.send_task(task_name, (body, source_info))
 
     if "simulate_processing_lag" in body:
         log.info(("task - {} - simulating processing"
