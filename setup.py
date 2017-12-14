@@ -54,10 +54,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "celery_connectors"))
 setup(
     name="celery-connectors",
     cmdclass={"build_py": build_py},
-    version="1.0.18",
+    version="1.0.19",
     description="Celery Connectors",
     long_description="Messaging examples for Celery and Kombu. " +
-    "Multple publisher-subscriber examples for processing json or " +
+    "Multiple publisher-subscriber examples for processing json or " +
     "pickled messages from Redis, RabbitMQ or AWS SQS. " +
     "Includes Kombu message processors using native Producer and " +
     "Consumer classes as well as ConsumerProducerMixin workers for relay " +
