@@ -97,16 +97,19 @@ class Subscriber:
         # end of building new consume queues
 
         self.subscriber_app.conf.tasks_queues = self.consume_from_queues
+        self.subscriber_app.conf.broker_transport_options = self.transport_options
 
         self.state = "ready"
     # end of setup_routing
 
     def consume(self,
                 callback,
-                queue,
+                queue=None,
+                queues=[],
                 exchange=None,
                 routing_key=None,
                 silent=False,
+                prefetch_count=1,  # only fetch one message off the queue
                 auto_declare=True):
 
         """
@@ -121,28 +124,43 @@ class Subscriber:
                       "function or class method"))
             return
 
+        if not queue and len(queues) == 0:
+            log.info(("Please pass in a valid queue name"
+                      "or list of queue names"))
+            return
+
         if self.state != "ready":
+            use_queues = [queue]
+            if len(queues) > 0:
+                use_queues = queues
+
             if exchange and routing_key:
-                self.setup_routing(exchange, [queue], routing_key)
+                self.setup_routing(exchange, use_queues, routing_key)
             else:
-                self.setup_routing(queue, [queue])
+                self.setup_routing(queue, use_queues)
         # end of initializing for the first time
 
         if not silent:
             log.info(("Subscribed to Exchange={} with "
-                      "routes to queues={} with callback={}")
+                      "routes to queues={} with callback={} "
+                      "prefetch_count={}")
                      .format(self.exchange.name,
                              len(self.consume_from_queues),
-                             callback.__name__))
+                             callback.__name__,
+                             prefetch_count))
 
         consume_from_queues = self.consume_from_queues
 
+        # http://docs.celeryproject.org/en/latest/userguide/extending.html
         class ConnectorConsumer(bootsteps.ConsumerStep):
 
             def get_consumers(self, channel):
+
+                # http://docs.celeryproject.org/projects/kombu/en/latest/userguide/consumers.html
                 return [Consumer(channel,
                                  queues=consume_from_queues,
                                  auto_declare=auto_declare,
+                                 prefetch_count=prefetch_count,
                                  callbacks=[callback],
                                  accept=["json"])]
             # end of get_consumer

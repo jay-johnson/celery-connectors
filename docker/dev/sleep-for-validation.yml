@@ -1,0 +1,23 @@
+version: '2'
+
+services:
+
+  # Celery Connectors
+  worker:
+    hostname: worker
+    image: jayjohnson/celery-connectors:latest
+    env_file: ./env/common-celery-connectors.env
+    labels:
+      NAME: "worker"
+    container_name: "worker"
+    network_mode: "host"
+    # volumes:
+      # want to shared files outside the container?
+      # - /tmp:/opt/shared
+    logging:
+      # limit logs retained on host to 25MB
+      driver: "json-file"
+      options:
+        max-size: "500k"
+        max-file: "50"
+    entrypoint: "sleep 300"

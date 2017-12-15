@@ -14,10 +14,10 @@ log = logging.getLogger(name)
 
 log.info("Start - {}".format(name))
 
-exchange_name = ev("CONVERSIONS_EXCHANGE", "user.events")
-queue_name = ev("CONVERSIONS_QUEUE", "user.events.conversions")
-routing_key = ev("CONVERSIONS_ROUTING_KEY", "user.events.conversions")
-auth_url = ev("BROKER_URL", "redis://localhost:6379/0")
+exchange_name = ev("PUBLISH_EXCHANGE", "user.events")
+routing_key = ev("PUBLISH_ROUTING_KEY", "user.events.conversions")
+queue_name = ev("PUBLISH_QUEUE", "user.events.conversions")
+auth_url = ev("PUB_BROKER_URL", "redis://localhost:6379/0")
 serializer = "json"
 
 # import ssl

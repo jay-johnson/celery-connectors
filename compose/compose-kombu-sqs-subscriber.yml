@@ -1,0 +1,38 @@
+version: '2'
+
+services:
+
+  # Celery Connectors
+  kombusqspub:
+    hostname: kombusqspub
+    image: jayjohnson/celery-connectors:latest
+    env_file: ./env/common-celery-connectors.env
+    environment:
+      - SQS_AWS_ACCESS_KEY=
+      - SQS_AWS_SECRET_KEY=
+      - APP_NAME=kombu-sqs-sub
+      - SUBSCRIBER_NAME=sqs-sub
+      - CONSUME_EXCHANGE=test1
+      - CONSUME_ROUTING_KEY=test1
+      - CONSUME_QUEUE=test1
+      - PUBLISH_NAME=
+      - PUB_BROKER_URL=
+      - PUBLISH_EXCHANGE=
+      - PUBLISH_ROUTING_KEY=
+      - PUBLISH_QUEUE=
+    labels:
+      NAME: "kombusqspub"
+    container_name: "kombusqspub"
+    network_mode: "host"
+    # volumes:
+      # want to shared files outside the container?
+      # - /tmp:/opt/shared
+    logging:
+      # limit logs retained on host to 25MB
+      driver: "json-file"
+      options:
+        max-size: "500k"
+        max-file: "50"
+    # debug containers by sleeping on entrypoint
+    # entrypoint: "sleep 600"
+    entrypoint: "/opt/celery_connectors/venv/bin/python /opt/celery_connectors/kombu_sqs_subscriber.py"

@@ -25,7 +25,7 @@ aws_secret = ev(
             "SQS_AWS_SECRET_KEY",
             "not_a_secret")
 
-sqs_auth_url = ev("BROKER_URL",
+sqs_auth_url = ev("SUB_BROKER_URL",
                   "sqs://{}:{}@".format(
                       aws_key,
                       aws_secret))
@@ -41,9 +41,9 @@ pub = Publisher("kombu-sqs-publisher",
 # Now consume:
 seconds_to_consume = 10.0
 serializer = "json"
-queue = "test1"
-exchange = "test1"
-routing_key = "test1"
+exchange = ev("CONSUME_EXCHANGE", "test1")
+routing_key = ev("CONSUME_ROUTING_KEY", "test1")
+queue = ev("CONSUME_QUEUE", "test1")
 max_timeout = 43200
 transport_options = {}
 

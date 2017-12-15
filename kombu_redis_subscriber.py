@@ -29,7 +29,8 @@ def handle_message(body, message):
 # Initialize KombuSubscriber
 ssl_options = {}
 sub = KombuSubscriber("kombu-redis-subscriber",
-                      ev("BROKER_URL", "redis://localhost:6379/0"),
+                      ev("SUB_BROKER_URL",
+                         "redis://localhost:6379/0"),
                       ssl_options)
 
 
@@ -37,7 +38,7 @@ sub = KombuSubscriber("kombu-redis-subscriber",
 seconds_to_consume = 10.0
 heartbeat = 60
 serializer = "application/json"
-queue = "reporting.accounts"
+queue = ev("CONSUME_QUEUE", "reporting.accounts")
 sub.consume(callback=handle_message,
             queue=queue,
             exchange=None,

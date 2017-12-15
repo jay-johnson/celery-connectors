@@ -53,7 +53,7 @@ class LoadTestWorkerRabbitMQConsuming(BaseTestCase):
         # end of building messages before slower publishing calls
 
         pub_auth_url = ev("RELAY_WORKER_BROKER_URL",
-                          "amqp://rabbitmq:rabbitmq@localhost:5672//")
+                          "pyamqp://rabbitmq:rabbitmq@localhost:5672//")
         path_to_config_module = "ecomm_app.ecommerce.celeryconfig_pub_sub"
 
         app = ecomm_app.ecommerce.tasks.get_celery_app(

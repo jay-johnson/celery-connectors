@@ -95,7 +95,7 @@ def run_publisher(broker_url,
             else:
                 num_fails += 1
                 sleep_duration = calc_backoff_timer(num_fails)
-                log.info(("publish failed - {} - exch={} rk={}"
+                log.info(("publish failed - {} - exch={} rk={} "
                           "sleep={} seconds retry={}")
                          .format(send_res["error"],
                                  exchange,

@@ -1,0 +1,39 @@
+version: '2'
+
+services:
+
+  # Celery Connectors
+  subsloadtest:
+    hostname: subsloadtest
+    image: jayjohnson/celery-connectors:latest
+    env_file: ./env/common-celery-connectors.env
+    environment:
+      - APP_NAME=mixin-load-test-subs-rabbit
+      - SUBSCRIBER_NAME=
+      - SUB_BROKER_URL=
+      - CONSUME_EXCHANGE=
+      - CONSUME_ROUTING_KEY=
+      - CONSUME_QUEUE=
+      - PUBLISH_NAME=mixin-subs-publisher
+      - PUB_BROKER_URL=pyamqp://rabbitmq:rabbitmq@localhost:5672//
+      - PUBLISH_EXCHANGE=
+      - PUBLISH_EXCHANGE_TYPE=
+      - PUBLISH_ROUTING_KEY=reporting.subscriptions
+      - PUBLISH_QUEUE=reporting.subscriptions
+      - NUM_MSG_TO_PUBLISH=200000
+    labels:
+      NAME: "subsloadtest"
+    container_name: "subsloadtest"
+    network_mode: "host"
+    # volumes:
+      # want to shared files outside the container?
+      # - /tmp:/opt/shared
+    logging:
+      # limit logs retained on host to 25MB
+      driver: "json-file"
+      options:
+        max-size: "500k"
+        max-file: "50"
+    # debug containers by sleeping on entrypoint
+    # entrypoint: "sleep 600"
+    entrypoint: "/opt/celery_connectors/venv/bin/python /opt/celery_connectors/start-subscriptions-rabbitmq-test.py"

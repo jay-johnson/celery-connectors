@@ -22,14 +22,13 @@ name = ev("APP_NAME", "robopub")
 log = logging.getLogger(name)
 
 
-broker_url = ev("BROKER_URL", "pyamqp://rabbitmq:rabbitmq@localhost:5672//")
-exchange_name = ev("EXCHANGE_NAME", "ecomm.api")
-exchange_type = ev("EXCHANGE_TYPE", "topic")
-routing_key = ev("ROUTING_KEY", "ecomm.api.west")
-queue_name = ev("QUEUE_NAME", "ecomm.api.west")
-prefetch_count = int(ev("PREFETCH_COUNT", "1"))
-priority_routing = {"high": "ecomm.api.west",
-                    "low": "ecomm.api.east"}
+broker_url = ev("PUB_BROKER_URL", "pyamqp://rabbitmq:rabbitmq@localhost:5672//")
+exchange_name = ev("PUBLISH_EXCHANGE", "ecomm.api")
+exchange_type = ev("PUBLISH_EXCHANGE_TYPE", "topic")
+routing_key = ev("PUBLISH_ROUTING_KEY", "ecomm.api.west")
+queue_name = ev("PUBLISH_QUEUE", "ecomm.api.west")
+priority_routing = {"high": queue_name,
+                    "low": queue_name}
 use_exchange = Exchange(exchange_name, type=exchange_type)
 use_routing_key = routing_key
 use_queue = Queue(queue_name, exchange=use_exchange, routing_key=routing_key)

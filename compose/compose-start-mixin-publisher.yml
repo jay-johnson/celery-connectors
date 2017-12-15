@@ -1,0 +1,38 @@
+version: '2'
+
+services:
+
+  # Celery Connectors
+  mixinpubrmq:
+    hostname: mixinpubrmq
+    image: jayjohnson/celery-connectors:latest
+    env_file: ./env/common-celery-connectors.env
+    environment:
+      - APP_NAME=robopub
+      - SUBSCRIBER_NAME=
+      - SUB_BROKER_URL=
+      - CONSUME_EXCHANGE=
+      - CONSUME_ROUTING_KEY=
+      - CONSUME_QUEUE=
+      - PUBLISH_NAME=mixin-pub
+      - PUB_BROKER_URL=pyamqp://rabbitmq:rabbitmq@localhost:5672//
+      - PUBLISH_EXCHANGE=ecomm.api
+      - PUBLISH_EXCHANGE_TYPE=topic
+      - PUBLISH_ROUTING_KEY=ecomm.api.west
+      - PUBLISH_QUEUE=ecomm.api.west
+    labels:
+      NAME: "mixinpubrmq"
+    container_name: "mixinpubrmq"
+    network_mode: "host"
+    # volumes:
+      # want to shared files outside the container?
+      # - /tmp:/opt/shared
+    logging:
+      # limit logs retained on host to 25MB
+      driver: "json-file"
+      options:
+        max-size: "500k"
+        max-file: "50"
+    # debug containers by sleeping on entrypoint
+    # entrypoint: "sleep 600"
+    entrypoint: "/opt/celery_connectors/venv/bin/python /opt/celery_connectors/start-mixin-publisher.py"

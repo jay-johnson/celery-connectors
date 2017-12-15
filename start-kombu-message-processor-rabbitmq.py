@@ -15,7 +15,7 @@ log.info("Start - {}".format(name))
 
 # want to change where you're subscribing vs publishing?
 sub_ssl_options = {}
-sub_auth_url = ev("SUB_BROKER_URL", "amqp://rabbitmq:rabbitmq@localhost:5672//")
+sub_auth_url = ev("SUB_BROKER_URL", "pyamqp://rabbitmq:rabbitmq@localhost:5672//")
 pub_ssl_options = {}
 pub_auth_url = ev("PUB_BROKER_URL", "redis://localhost:6379/0")
 
@@ -27,12 +27,12 @@ msg_proc = MessageProcessor(name=name,
                             pub_ssl_options=pub_ssl_options)
 
 # configure where this is consuming:
-queue = "user.events.conversions"
+queue = ev("CONSUME_QUEUE", "user.events.conversions")
 
 # Relay Publish Hook - sending to Redis
 # where is it sending handled messages using a publish-hook or auto-caching:
-exchange = "reporting.accounts"
-routing_key = "reporting.accounts"
+exchange = ev("PUBLISH_EXCHANGE", "reporting.accounts")
+routing_key = ev("PUBLISH_ROUTING_KEY", "reporting.accounts")
 
 # set up the controls and long-term connection attributes
 seconds_to_consume = 10.0

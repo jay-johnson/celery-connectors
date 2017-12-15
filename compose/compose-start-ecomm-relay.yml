@@ -1,0 +1,42 @@
+version: '2'
+
+services:
+
+  # Celery Connectors
+  ecommrelay:
+    hostname: ecommrelay
+    image: jayjohnson/celery-connectors:latest
+    env_file: ./env/common-celery-connectors.env
+    environment:
+      - APP_NAME=ecomm-relay
+      - SUBSCRIBER_NAME=ecomm-relay-sub
+      - SUB_BROKER_URL=pyamqp://rabbitmq:rabbitmq@localhost:5672//
+      - CONSUME_EXCHANGE=
+      - CONSUME_ROUTING_KEY=
+      - CONSUME_QUEUE=user.events.conversions
+      - PUBLISH_NAME=publisher
+      - PUB_BROKER_URL=redis://localhost:6379/0
+      - PUBLISH_EXCHANGE=reporting.accounts
+      - PUBLISH_ROUTING_KEY=reporting.accounts
+      - RELAY_NAME=ecomm-relay
+      - RELAY_WORKER_BROKER_URL=pyamqp://rabbitmq:rabbitmq@localhost:5672//
+      - RELAY_BACKEND_URL=redis://localhost:6379/12
+      - RELAY_CONFIG_MODULE=ecomm_app.ecommerce.celeryconfig_pub_sub
+      - RELAY_TASK_NAME=ecomm_app.ecommerce.tasks.handle_user_conversion_events
+      - PUBLISH_QUEUE=
+    labels:
+      NAME: "ecommrelay"
+    container_name: "ecommrelay"
+    network_mode: "host"
+    # volumes:
+      # want to shared files outside the container?
+      # - /tmp:/opt/shared
+    logging:
+      # limit logs retained on host to 25MB
+      driver: "json-file"
+      options:
+        max-size: "500k"
+        max-file: "50"
+    # debug containers by sleeping on entrypoint
+    # entrypoint: "sleep 600"
+    entrypoint: "/opt/celery_connectors/venv/bin/python /opt/celery_connectors/start-ecomm-relay.py"

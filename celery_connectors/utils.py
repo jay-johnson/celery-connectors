@@ -86,6 +86,15 @@ def get_routing_key_from_msg(msg):
 # end of get_routing_key_from_msg
 
 
+def get_source_info_from_msg(msg):
+    src_exchange = get_exchange_from_msg(msg)
+    src_routing_key = get_routing_key_from_msg(msg)
+    source_info = {"src_exchange": src_exchange,
+                   "src_routing_key": src_routing_key}
+    return source_info
+# end of get_source_info_from_msg
+
+
 def get_random_float(use_min=1.0, use_max=10.0):
     return random.uniform(use_min, use_max)
 # end of get_random_float

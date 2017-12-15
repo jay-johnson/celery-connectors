@@ -1,0 +1,41 @@
+version: '2'
+
+services:
+
+  # Celery Connectors
+  jtojrelay:
+    hostname: jtojrelay
+    image: jayjohnson/celery-connectors:latest
+    env_file: ./env/common-celery-connectors.env
+    environment:
+      - APP_NAME=jtoj_relay
+      - SUBSCRIBER_NAME=jtoj-sub
+      - SUB_BROKER_URL=pyamqp://rabbitmq:rabbitmq@localhost:5672//
+      - CONSUME_EXCHANGE=ecomm.api
+      - CONSUME_EXCHANGE_TYPE=topic
+      - CONSUME_ROUTING_KEY=ecomm.api.west
+      - CONSUME_QUEUE=ecomm.api.west
+      - PUBLISH_NAME=jtoj-pub
+      - RELAY_BROKER_URL=pyamqp://rabbitmq:rabbitmq@localhost:5672//
+      - RELAY_BACKEND_URL=redis://localhost:6379/0
+      - RELAY_EXCHANGE=
+      - RELAY_EXCHANGE_TYPE=direct
+      - RELAY_ROUTING_KEY=reporting.payments
+      - RELAY_QUEUE=
+      - PREFETCH_COUNT=1
+    labels:
+      NAME: "jtojrelay"
+    container_name: "jtojrelay"
+    network_mode: "host"
+    # volumes:
+      # want to shared files outside the container?
+      # - /tmp:/opt/shared
+    logging:
+      # limit logs retained on host to 25MB
+      driver: "json-file"
+      options:
+        max-size: "500k"
+        max-file: "50"
+    # debug containers by sleeping on entrypoint
+    # entrypoint: "sleep 600"
+    entrypoint: "/opt/celery_connectors/venv/bin/python /opt/celery_connectors/start-mixin-json-relay.py"

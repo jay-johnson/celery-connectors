@@ -18,7 +18,8 @@ Error
 build
 dist
 venv
-nohup.out
+venv2
+py2venv
 
 *.log
 *.log.1*
@@ -30,3 +31,5 @@ nohup.out
 *.log.7*
 *.log.8*
 *.log.9*
+
+celery_connectors-*.tgz

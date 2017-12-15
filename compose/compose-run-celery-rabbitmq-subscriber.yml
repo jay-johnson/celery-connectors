@@ -1,0 +1,32 @@
+version: '2'
+
+services:
+
+  # Celery Connectors
+  celeryrabbitmqsubscriber:
+    hostname: celeryrabbitmqsubscriber
+    image: jayjohnson/celery-connectors:latest
+    env_file: ./env/common-celery-connectors.env
+    environment:
+      - APP_NAME=celeryrmqsub
+      - SUBSCRIBER_NAME=rmq-sub
+      - SUB_BROKER_URL=pyamqp://rabbitmq:rabbitmq@localhost:5672//
+      - CONSUME_QUEUE=reporting.accounts
+      - CONSUME_QUEUE2=reporting.subscriptions
+      - PREFETCH_COUNT=1
+    labels:
+      NAME: "celeryrabbitmqsubscriber"
+    container_name: "celeryrabbitmqsubscriber"
+    network_mode: "host"
+    # volumes:
+      # want to shared files outside the container?
+      # - /tmp:/opt/shared
+    logging:
+      # limit logs retained on host to 25MB
+      driver: "json-file"
+      options:
+        max-size: "500k"
+        max-file: "50"
+    # debug containers by sleeping on entrypoint
+    # entrypoint: "sleep 600"
+    entrypoint: "/opt/celery_connectors/venv/bin/celery worker -A run_rabbitmq_subscriber -n rabbitmq_bootstep -c 3 --loglevel=INFO -Ofair"

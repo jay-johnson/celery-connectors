@@ -1,0 +1,39 @@
+version: '2'
+
+services:
+
+  # Celery Connectors
+  loadtestredis:
+    hostname: loadtestredis
+    image: jayjohnson/celery-connectors:latest
+    env_file: ./env/common-celery-connectors.env
+    environment:
+      - APP_NAME=load-test-redis
+      - SUBSCRIBER_NAME=
+      - SUB_BROKER_URL=
+      - CONSUME_EXCHANGE=
+      - CONSUME_ROUTING_KEY=
+      - CONSUME_QUEUE=
+      - PUBLISH_NAME=publisher
+      - PUB_BROKER_URL=redis://localhost:6379/0
+      - PUBLISH_EXCHANGE=
+      - PUBLISH_ROUTING_KEY=reporting.accounts
+      - PUBLISH_QUEUE=reporting.accounts
+      - NUM_MSG_TO_PUBLISH=200000
+      - PREFETCH_COUNT=1
+    labels:
+      NAME: "loadtestredis"
+    container_name: "loadtestredis"
+    network_mode: "host"
+    # volumes:
+      # want to shared files outside the container?
+      # - /tmp:/opt/shared
+    logging:
+      # limit logs retained on host to 25MB
+      driver: "json-file"
+      options:
+        max-size: "500k"
+        max-file: "50"
+    # debug containers by sleeping on entrypoint
+    # entrypoint: "sleep 600"
+    entrypoint: "/opt/celery_connectors/venv/bin/python /opt/celery_connectors/start-load-test-redis.py"

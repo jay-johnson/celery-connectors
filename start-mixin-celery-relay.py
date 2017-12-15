@@ -21,14 +21,14 @@ name = ev("APP_NAME", "jtoc_relay")
 log = logging.getLogger(name)
 
 
-broker_url = ev("BROKER_URL", "pyamqp://rabbitmq:rabbitmq@localhost:5672//")
-exchange_name = ev("EXCHANGE_NAME", "ecomm.api")
-exchange_type = ev("EXCHANGE_TYPE", "topic")
-queue_name = ev("QUEUE_NAME", "ecomm.api.west")
-routing_key = ev("ROUTING_KEY", "ecomm.api.west")
-prefetch_count = int(ev("PREFETCH_COUNT", "1"))
-priority_routing = {"high": "ecomm.api.west",
-                    "low": "ecomm.api.east"}
+broker_url = ev("SUB_BROKER_URL", "pyamqp://rabbitmq:rabbitmq@localhost:5672//")
+exchange_name = ev("CONSUME_EXCHANGE", "ecomm.api")
+exchange_type = ev("CONSUME_EXCHANGE_TYPE", "topic")
+routing_key = ev("CONSUME_ROUTING_KEY", "ecomm.api.west")
+queue_name = ev("CONSUME_QUEUE", "ecomm.api.west")
+prefetch_count = int(float(ev("PREFETCH_COUNT", "1")))
+priority_routing = {"high": queue_name,
+                    "low": queue_name}
 use_exchange = Exchange(exchange_name, type=exchange_type)
 use_queue = Queue(queue_name, exchange=use_exchange, routing_key=routing_key)
 task_queues = [
@@ -37,8 +37,8 @@ task_queues = [
 ssl_options = build_ssl_options()
 
 relay_broker_url = ev("RELAY_BROKER_URL", "pyamqp://rabbitmq:rabbitmq@localhost:5672//")
-relay_backend_url = ev("RELAY_BROKER_URL", "redis://localhost:6379/10")
-relay_exchange_name = ev("RELAY_EXCHANGE_NAME", "")
+relay_backend_url = ev("RELAY_BACKEND_URL", "redis://localhost:6379/10")
+relay_exchange_name = ev("RELAY_EXCHANGE", "")
 relay_exchange_type = ev("RELAY_EXCHANGE_TYPE", "direct")
 relay_routing_key = ev("RELAY_ROUTING_KEY", "reporting.payments")
 relay_exchange = Exchange(relay_exchange_name, type=relay_exchange_type)

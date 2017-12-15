@@ -1,0 +1,37 @@
+version: '2'
+
+services:
+
+  # Celery Connectors
+  celerysubredis:
+    hostname: celerysubredis
+    image: jayjohnson/celery-connectors:latest
+    env_file: ./env/common-celery-connectors.env
+    environment:
+      - APP_NAME=celery-redis-sub
+      - SUBSCRIBER_NAME=redis-sub
+      - SUB_BROKER_URL=redis://localhost:6379/0
+      - CONSUME_EXCHANGE=
+      - CONSUME_ROUTING_KEY=
+      - CONSUME_QUEUE=reporting.accounts
+      - PUBLISH_NAME=
+      - PUB_BROKER_URL=
+      - PUBLISH_EXCHANGE=
+      - PUBLISH_ROUTING_KEY=
+      - PUBLISH_QUEUE=
+    labels:
+      NAME: "celerysubredis"
+    container_name: "celerysubredis"
+    network_mode: "host"
+    # volumes:
+      # want to shared files outside the container?
+      # - /tmp:/opt/shared
+    logging:
+      # limit logs retained on host to 25MB
+      driver: "json-file"
+      options:
+        max-size: "500k"
+        max-file: "50"
+    # debug containers by sleeping on entrypoint
+    # entrypoint: "sleep 600"
+    entrypoint: "/opt/celery_connectors/venv/bin/python /opt/celery_connectors/run_redis_subscriber.py"

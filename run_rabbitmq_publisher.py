@@ -17,10 +17,10 @@ log.info("Start - {}".format(name))
 # Celery Transports:
 # http://docs.celeryproject.org/projects/kombu/en/latest/userguide/connections.html#transport-comparison
 
-exchange_name = ev("EXCHANGE", "reporting")
-queue_name = ev("QUEUE", "reporting.accounts")
-routing_key = ev("RK", "reporting.accounts")
-auth_url = ev("BROKER_URL", "amqp://rabbitmq:rabbitmq@localhost:5672//")
+exchange_name = ev("PUBLISH_EXCHANGE", "reporting")
+routing_key = ev("PUBLISH_ROUTING_KEY", "reporting.accounts")
+queue_name = ev("PUBLISH_QUEUE", "reporting.accounts")
+auth_url = ev("PUB_BROKER_URL", "pyamqp://rabbitmq:rabbitmq@localhost:5672//")
 serializer = "json"
 
 # import ssl

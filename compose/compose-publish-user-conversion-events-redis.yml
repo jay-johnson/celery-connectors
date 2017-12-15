@@ -1,0 +1,37 @@
+version: '2'
+
+services:
+
+  # Celery Connectors
+  ucepubredis:
+    hostname: ucepubredis
+    image: jayjohnson/celery-connectors:latest
+    env_file: ./env/common-celery-connectors.env
+    environment:
+      - APP_NAME=redis-pub-uce
+      - SUBSCRIBER_NAME=
+      - SUB_BROKER_URL=
+      - CONSUME_EXCHANGE=
+      - CONSUME_ROUTING_KEY=
+      - CONSUME_QUEUE=
+      - PUBLISH_NAME=publisher
+      - PUB_BROKER_URL=redis://localhost:6379/0
+      - PUBLISH_EXCHANGE=user.events
+      - PUBLISH_ROUTING_KEY=user.events.conversions
+      - PUBLISH_QUEUE=user.events.conversions
+    labels:
+      NAME: "ucepubredis"
+    container_name: "ucepubredis"
+    network_mode: "host"
+    # volumes:
+      # want to shared files outside the container?
+      # - /tmp:/opt/shared
+    logging:
+      # limit logs retained on host to 25MB
+      driver: "json-file"
+      options:
+        max-size: "500k"
+        max-file: "50"
+    # debug containers by sleeping on entrypoint
+    # entrypoint: "sleep 600"
+    entrypoint: "/opt/celery_connectors/venv/bin/python /opt/celery_connectors/publish-user-conversion-events-redis.py"

@@ -17,10 +17,10 @@ log.info("Start - {}".format(name))
 # Celery Transports:
 # http://docs.celeryproject.org/projects/kombu/en/latest/userguide/connections.html#transport-comparison
 
-exchange_name = ev("EXCHANGE", "reporting.accounts")
-queue_name = ev("QUEUE", "reporting.accounts")
-routing_key = ev("RK", "reporting.accounts")
-auth_url = ev("BROKER_URL", "redis://localhost:6379/0")
+exchange_name = ev("PUBLISH_EXCHANGE", "reporting.accounts")
+routing_key = ev("PUBLISH_EXCHANGE", "reporting.accounts")
+queue_name = ev("PUBLISH_QUEUE", "reporting.accounts")
+auth_url = ev("PUB_BROKER_URL", "redis://localhost:6379/0")
 serializer = "json"
 
 # https://redis.io/topics/security

@@ -3,9 +3,12 @@ Celery Connectors
 
 Celery_ is a great framework for processing messages from a message queue broker like Redis or RabbitMQ. If you have a queue with json or pickled messages that you need to consume and process, then hopefully this repository will help you out.
 
-It has multiple examples on setting up working publisher-subscriber messaging workflows using Celery, Celery Bootsteps, Kombu, and Kombu mixins. These examples are focused on finding a starting ground to tune for high availability + performance + reduce the risk of message loss. By using the included docker containers combined with the included load tests, you can start to vet your solution won't wake you up in the middle of the night.
+It has multiple examples on setting up working publisher-subscriber messaging workflows using Celery, Celery Bootsteps, Kombu, and Kombu mixins. These examples are focused on finding a starting ground to tune for high availability + performance + reduce the risk of message loss. By using the included docker containers combined with the included load tests, you can start to vet your solution won't wake you up in the middle of the night during an outage.
+
+Each example below can run as a docker container with the included docker-compose files in the `compose directory`_. Please note these docker-compose steps are optional and the consumer counts in the documentation below will only refer to the non-dockerized, repository versions.
 
 .. _Celery: http://docs.celeryproject.org/en/latest/
+.. _compose directory: https://github.com/jay-johnson/celery-connectors/tree/master/compose
 
 Why do I care?
 --------------
@@ -85,6 +88,18 @@ Please start this in a new terminal that has sourced the virtual env: ``source v
     INFO:relay:consuming queues=[<unbound Queue ecomm.api.west -> <unbound Exchange ecomm.api(topic)> -> ecomm.api.west>]
     INFO:kombu.mixins:Connected to amqp://rabbitmq:**@127.0.0.1:5672//
     INFO:relay-wrk:creating consumer for queues=1 callback=handle_message relay_ex=Exchange ''(direct) relay_rk=reporting.payments prefetch=1
+
+Or with docker compose
+
+::
+
+    docker-compose -f compose-start-mixin-json-relay.yml up
+    Starting jtojrelay ... 
+    Starting jtojrelay ... done
+    Attaching to jtojrelay
+    jtojrelay    | 2017-12-15 06:37:39,458 - jtoj_relay - INFO - Consuming queues=1
+    jtojrelay    | 2017-12-15 06:37:39,462 - jtoj_relay - INFO - consuming queues=[<unbound Queue ecomm.api.west -> <unbound Exchange ""(topic)> -> ecomm.api.west>]
+    jtojrelay    | 2017-12-15 06:37:39,478 - kombu.mixins - INFO - Connected to amqp://rabbitmq:**@127.0.0.1:5672//
     
 List the Queues
 ---------------
@@ -116,6 +131,17 @@ In a new terminal that has the virtual env loaded, start the subscriber for rela
     INFO:kombu-mixin-subscriber:Start - kombu-mixin-subscriber
     INFO:kombu-subscriber:setup routing
     INFO:kombu-subscriber:kombu-mixin-subscriber - kombu.subscriber queues=reporting.payments consuming with callback=handle_message
+
+Or with docker compose:
+
+::
+
+    docker-compose -f compose-kombu-mixin-subscriber.yml  up
+    WARNING: Found orphan containers (jtojrelay) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up.
+    Creating kombumixinsubrmq ... done
+    Attaching to kombumixinsubrmq
+    kombumixinsubrmq    | 2017-12-15 06:41:15,135 - kombu-mixin-subscriber - INFO - Start - kombu-mixin-subscriber
+    kombumixinsubrmq    | 2017-12-15 06:41:15,135 - kombu-subscriber - INFO - setup routing
 
 List the Bindings
 -----------------
@@ -151,7 +177,7 @@ In a new terminal that has the virtual env loaded, start the mixin publisher tha
 
 ::
 
-    $ start-mixin-publisher.py 
+    start-mixin-publisher.py 
     INFO:robopub:Generating messages=10
     INFO:robopub:Publishing messages=10
     INFO:pub_send:pub_send publish - ex=Exchange ecomm.api(topic) rk=ecomm.api.west sz=json
@@ -165,6 +191,15 @@ In a new terminal that has the virtual env loaded, start the mixin publisher tha
     INFO:pub_send:pub_send publish - ex=Exchange ecomm.api(topic) rk=ecomm.api.west sz=json
     INFO:pub_send:pub_send publish - ex=Exchange ecomm.api(topic) rk=ecomm.api.west sz=json
     INFO:robopub:Done Publishing
+
+Or with docker compose:
+
+::
+
+    docker-compose -f compose-start-mixin-publisher.yml up
+    WARNING: Found orphan containers (kombumixinsubrmq, jtojrelay) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up.
+    Starting mixinpubrmq ... done
+    Attaching to mixinpubrmq
 
 Verify the Relay Handled the Messages
 -------------------------------------
@@ -293,6 +328,14 @@ Note: Please run this from the base directory for the repository and source the 
     [2017-12-14 00:33:03,337: INFO/MainProcess] celery@ecommerce_subscriber ready.
     [2017-12-14 00:33:05,275: INFO/MainProcess] Events of group {task} enabled by remote.
 
+Or with docker compose:
+
+::
+
+    docker-compose -f compose-start-ecomm-worker.yml up
+    Recreating ecommworker ... done
+    Attaching to ecommworker
+
 Notice the worker is named ``celery@ecommerce_subscriber`` this is the identifier for viewing the Celery application in Flower:
 
 http://localhost:5555/worker/celery@ecommerce_subscriber (login: admin/admin)
@@ -311,6 +354,17 @@ Please start this in a new terminal that has sourced the virtual env: ``source v
     2017-12-14 00:36:47,342 - jtoc - INFO - consuming queues=[<unbound Queue ecomm.api.west -> <unbound Exchange ecomm.api(topic)> -> ecomm.api.west>]
     2017-12-14 00:36:47,353 - kombu.mixins - INFO - Connected to amqp://rabbitmq:**@127.0.0.1:5672//
     2017-12-14 00:36:47,355 - jtoc - INFO - creating consumer for queues=1 callback=handle_message relay_ex=Exchange ''(direct) relay_rk=reporting.payments prefetch=1
+
+Or with docker compose:
+
+::
+
+    docker-compose -f compose-start-mixin-celery-relay.yml up
+    Creating jtocrelay ... done
+    Attaching to jtocrelay
+    jtocrelay    | 2017-12-15 06:56:07,689 - jtoc_relay - INFO - Consuming queues=1
+    jtocrelay    | 2017-12-15 06:56:07,703 - jtoc_relay - INFO - consuming queues=[<unbound Queue ecomm.api.west -> <unbound Exchange ecomm.api(topic)> -> ecomm.api.west>]
+    jtocrelay    | 2017-12-15 06:56:07,720 - kombu.mixins - INFO - Connected to amqp://rabbitmq:**@127.0.0.1:5672//
 
 Publish a User Conversion Event to the Ecomm Relay
 --------------------------------------------------
@@ -335,6 +389,17 @@ Please start this in a new terminal that has sourced the virtual env: ``source v
     2017-12-14 00:42:16,873 - pub - INFO - ex=ecomm.api rk=ecomm.api.west msg=b517f87ff4_1
     2017-12-14 00:42:16,873 - pub - INFO - ex=ecomm.api rk=ecomm.api.west msg=822ef4142c_1
     2017-12-14 00:42:16,874 - robopub - INFO - Done Publishing
+
+
+Or with docker compose:
+
+::
+
+    docker-compose -f compose-start-mixin-publisher.yml up
+    WARNING: Found orphan containers (jtocrelay) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up.
+    Recreating mixinpubrmq ... done
+    Attaching to mixinpubrmq
+    mixinpubrmq    | 2017-12-15 06:56:43,517 - robopub - INFO - Generating messages=10
 
 Verify the Ecomm Relay Processed the Conversion Message
 -------------------------------------------------------
@@ -459,6 +524,16 @@ The ``start-mixin-load-test.py`` load test will send in 20,000 messages with no 
     2017-12-14 00:48:07,374 - pub - INFO - 8.00 send done msg=1600/20000 ex=ecomm.api rk=ecomm.api.west
     2017-12-14 00:48:07,374 - pub - INFO - ex=ecomm.api rk=ecomm.api.west msg=f1cf343847_1
 
+Or with docker compose:
+
+::
+
+    docker-compose -f compose-start-mixin-load-test.yml up
+    WARNING: Found orphan containers (ecommworker, jtocrelay) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up.
+    Starting mixinloadtest ... done
+    Attaching to mixinloadtest
+
+
 Sample output during that load test:
 
 ::
@@ -532,6 +607,12 @@ Want to try the load test again now that we just simulated a broker outage for a
 
     ./start-mixin-load-test.py 
 
+or
+
+::
+
+    docker-compose -f compose-start-mixin-load-test.yml up
+
 If not, then stop the ecomm relay and ecomm worker terminal sessions using: ``ctrl + c``
 
 Running an Ecommerce JSON-to-Celery Relay Service - Example 2
@@ -574,6 +655,14 @@ Note: Please run this from the base directory for the repository and source the 
     [2017-12-14 00:33:03,337: INFO/MainProcess] celery@ecommerce_subscriber ready.
     [2017-12-14 00:33:05,275: INFO/MainProcess] Events of group {task} enabled by remote.
 
+Or with docker compose:
+
+::
+
+    docker-compose -f compose-start-ecomm-worker.yml up
+    Starting ecommworker ... done
+    Attaching to ecommworker
+
 Notice the worker is named ``celery@ecommerce_subscriber`` this is the identifier for viewing the Celery application in Flower:
 
 http://localhost:5555/worker/celery@ecommerce_subscriber (login: admin/admin)
@@ -592,6 +681,15 @@ Please start this in a new terminal that has sourced the virtual env: ``source v
     2017-12-14 00:33:36,944 - message-processor - INFO - ecomm-relay START - consume_queue=user.events.conversions rk=reporting.accounts callback=relay_callback
     2017-12-14 00:33:36,944 - kombu-subscriber - INFO - setup routing
 
+Or with docker compose:
+
+::
+
+    docker-compose -f compose-start-ecomm-relay.yml up
+    WARNING: Found orphan containers (ecommworker) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up.
+    Creating ecommrelay ... done
+    Attaching to ecommrelay
+
 Publish a User Conversion Event to the Ecomm Relay
 --------------------------------------------------
 
@@ -606,6 +704,15 @@ Please start this in a new terminal that has sourced the virtual env: ``source v
     INFO:publish-user-conversion-events:Sending user conversion event msg={'product_id': 'XYZ', 'stripe_id': 999, 'account_id': 777, 'created': '2017-12-14T00:33:55.826534', 'subscription_id': 888} ex=user.events rk=user.events.conversions
     INFO:kombu-publisher:SEND - exch=user.events rk=user.events.conversions
     INFO:publish-user-conversion-events:End - publish-user-conversion-events sent=True
+
+Or with docker compose:
+
+::
+
+    docker-compose -f compose-publish-user-conversion-events-rabbitmq.yml up
+    WARNING: Found orphan containers (ecommrelay, ecommworker) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up.
+    Starting ucepubrmq ... done
+    Attaching to ucepubrmq
 
 Verify the Ecomm Relay Processed the Conversion Message
 -------------------------------------------------------
@@ -706,6 +813,413 @@ Start:
     Creating celredis1 ... done
     Creating celflowerredis ... done
 
+Celery Bootstep with RabbitMQ Outage Example
+============================================
+
+This example uses Celery bootsteps (http://docs.celeryproject.org/en/latest/userguide/extending.html) to run a standalone, headless subscriber that consumes routed messages to two queues. It will set up a RabbitMQ topic exchange with a queue that is bound using a routing key and a separate direct queue for additional messages to process. Once the entities are available in RabbitMQ, Kombu publishes the message to the exchanges and RabbitMQ provides the messaging facility to route the messages to the subscribed Celery workers' queues. Once messages are being processed we will simulate a broker failure and see how resilient Celery bootsteps are to this type of disaster.
+
+#.  Stop and Start the docker containers
+
+    ::
+
+        ./stop-redis-and-rabbitmq.sh 
+        Stopping redis and rabbitmq
+        Stopping celredis1       ... done
+        Stopping celflowerrabbit ... done
+        Stopping celflowerredis  ... done
+        Stopping celrabbit1      ... done
+        
+    ::
+
+        ./start-redis-and-rabbitmq.sh 
+        Starting redis and rabbitmq
+        Creating celrabbit1 ... done
+        Creating celredis1 ... 
+        Creating celflowerredis ... 
+        Creating celrabbit1 ... 
+
+#.  List the Queues
+
+    ::
+
+        list-queues.sh 
+
+    Listing Queues broker=localhost:15672
+
+    +-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+    |                     name                      | durable | auto_delete | consumers | messages | messages_ready | messages_unacknowledged |
+    +-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+    | celeryev.a1ccb5f7-4f76-4e26-9cdc-bf5438ba5362 | False   | True        | 1         | 0        | 0              | 0                       |
+    +-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+
+#.  Publish a message
+
+    ::
+
+        run_rabbitmq_publisher.py 
+        INFO:run-rabbitmq-publisher:Start - run-rabbitmq-publisher
+        INFO:run-rabbitmq-publisher:Sending msg={'created': '2017-12-14T18:08:29.481313', 'account_id': 456} ex=reporting rk=reporting.accounts
+        INFO:kombu-publisher:SEND - exch=reporting rk=reporting.accounts
+        INFO:run-rabbitmq-publisher:End - run-rabbitmq-publisher sent=True
+
+    Or with docker compose:
+
+    ::
+
+        docker-compose -f compose-run-rabbitmq-publisher.yml up
+        Creating kombupubrmq ... done
+        Attaching to kombupubrmq
+        kombupubrmq    | 2017-12-15 07:31:23,802 - run-rabbitmq-publisher - INFO - Start - run-rabbitmq-publisher
+        kombupubrmq    | 2017-12-15 07:31:23,802 - run-rabbitmq-publisher - INFO - Sending msg={'account_id': 456, 'created': '2017-12-15T07:31:23.802616'} ex=reporting rk=reporting.accounts
+        kombupubrmq    | 2017-12-15 07:31:23,899 - kombu-publisher - INFO - SEND - exch=reporting rk=reporting.accounts
+        kombupubrmq    | 2017-12-15 07:31:23,903 - run-rabbitmq-publisher - INFO - End - run-rabbitmq-publisher sent=True
+        kombupubrmq exited with code 0
+
+#.  Confirm the message is ready in the RabbitMQ Queue
+
+    Note the ``messages`` and ``messages_ready`` count increased while the ``messages_unacknowledged`` did not. Which is because we have not started the subscriber to process ready messages in the ``reporting.accounts`` queue.
+
+    ::
+
+        list-queues.sh 
+
+    Listing Queues broker=localhost:15672
+
+    +-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+    |                     name                      | durable | auto_delete | consumers | messages | messages_ready | messages_unacknowledged |
+    +-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+    | celeryev.a1ccb5f7-4f76-4e26-9cdc-bf5438ba5362 | False   | True        | 1         | 0        | 0              | 0                       |
+    +-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+    | reporting.accounts                            | True    | False       | 0         | 1        | 1              | 0                       |
+    +-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+
+#.  List the Exchanges
+
+    ::
+
+        list-exchanges.sh 
+
+    Listing Exchanges broker=localhost:15672
+
+    +---------------------+---------+---------+-------------+
+    |        name         |  type   | durable | auto_delete |
+    +---------------------+---------+---------+-------------+
+    |                     | direct  | True    | False       |
+    +---------------------+---------+---------+-------------+
+    | amq.direct          | direct  | True    | False       |
+    +---------------------+---------+---------+-------------+
+    | amq.fanout          | fanout  | True    | False       |
+    +---------------------+---------+---------+-------------+
+    | amq.headers         | headers | True    | False       |
+    +---------------------+---------+---------+-------------+
+    | amq.match           | headers | True    | False       |
+    +---------------------+---------+---------+-------------+
+    | amq.rabbitmq.log    | topic   | True    | False       |
+    +---------------------+---------+---------+-------------+
+    | amq.rabbitmq.trace  | topic   | True    | False       |
+    +---------------------+---------+---------+-------------+
+    | amq.topic           | topic   | True    | False       |
+    +---------------------+---------+---------+-------------+
+    | celery.pidbox       | fanout  | False   | False       |
+    +---------------------+---------+---------+-------------+
+    | celeryev            | topic   | True    | False       |
+    +---------------------+---------+---------+-------------+
+    | reply.celery.pidbox | direct  | False   | False       |
+    +---------------------+---------+---------+-------------+
+    | reporting           | topic   | True    | False       |
+    +---------------------+---------+---------+-------------+
+
+#.  Consume that message by starting up the Celery Rabbitmq subscriber module
+
+    This will consume messages from the ``reporting.accounts`` and ``reporting.subscriptions`` queues.
+
+    ::
+
+        celery worker -A run_rabbitmq_subscriber -n rabbitmq_bootstep -c 3 --loglevel=INFO -Ofair
+
+    Or with docker compose:
+
+    ::
+
+        docker-compose -f compose-run-celery-rabbitmq-subscriber.yml up
+        Creating celeryrabbitmqsubscriber ... done
+        Attaching to celeryrabbitmqsubscriber
+
+#.  Confirm the worker's logs show the message was received
+
+    ::
+
+        2017-12-14 10:10:25,832: INFO callback received msg body={'account_id': 456, 'created': '2017-12-14T18:08:29.481313'} from_ex=reporting from_rk=reporting.accounts
+
+#.  View the Rabbit Subscriber ``celery@rabbitmq_bootstep`` in Flower
+
+    Rabbit Flower server (login admin/admin)
+    
+    http://localhost:5555/
+
+#.  Verify the message is no longer in the Queue and Celery is connected as a consumer
+
+    With the Celery RabbitMQ worker still running, in a new terminal list the queues. Verify there is a consumer on the ``reporting.accounts`` and ``reporting.subscriptions`` queues.
+
+    ::
+        
+        list-queues.sh
+
+    Listing Queues broker=localhost:15672
+
+    +-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+    |                     name                      | durable | auto_delete | consumers | messages | messages_ready | messages_unacknowledged |
+    +-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+    | celery.rabbit.sub                             | True    | False       | 1         | 0        | 0              | 0                       |
+    +-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+    | celery@rabbitmq_bootstep.celery.pidbox        | False   | True        | 1         | 0        | 0              | 0                       |
+    +-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+    | celeryev.a1ccb5f7-4f76-4e26-9cdc-bf5438ba5362 | False   | True        | 1         | 0        | 0              | 0                       |
+    +-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+    | celeryev.f85fe29a-b729-48fa-a17d-b7e12c14dba8 | False   | True        | 1         | 0        | 0              | 0                       |
+    +-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+    | reporting.accounts                            | True    | False       | 1         | 0        | 0              | 0                       |
+    +-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+    | reporting.subscriptions                       | True    | False       | 1         | 0        | 0              | 0                       |
+    +-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+
+#.  Start the Queue watcher
+
+    In a new terminal activate the virtual env ``source venv/bin/activate``. 
+
+    ::
+
+        watch-queues.sh
+
+    The watch will poll RabbitMQ for the queues every second and before the load tests start should look empty:
+
+    +-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+    |                     name                      | durable | auto_delete | consumers | messages | messages_ready | messages_unacknowledged |
+    +-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+    | celery.rabbit.sub                             | True    | False       | 1         | 0        | 0              | 0                       |
+    +-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+    | celery@rabbitmq_bootstep.celery.pidbox        | False   | True        | 1         | 0        | 0              | 0                       |
+    +-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+    | celeryev.a1ccb5f7-4f76-4e26-9cdc-bf5438ba5362 | False   | True        | 1         | 0        | 0              | 0                       |
+    +-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+    | celeryev.f85fe29a-b729-48fa-a17d-b7e12c14dba8 | False   | True        | 1         | 0        | 0              | 0                       |
+    +-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+    | reporting.accounts                            | True    | False       | 1         | 0        | 0              | 0                       |
+    +-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+    | reporting.subscriptions                       | True    | False       | 1         | 0        | 0              | 0                       |
+    +-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+
+#.  Start the Accounts and Subscriptions Load Tests
+
+    This will require two separate terminal sessions with the virtual env activated ``source venv/bin/activate``. 
+    
+    In terminal 1 start the Accounts load test
+
+    ::
+
+        start-load-test-rabbitmq.py
+
+    Or with docker compose:
+
+    ::
+
+        docker-compose -f compose-start-load-test-rabbitmq.yml up
+        WARNING: Found orphan containers (subsloadtest, celeryrabbitmqsubscriber) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up.
+        Creating loadtestrmq ... done
+        Attaching to loadtestrmq
+
+    In terminal 2 start the Subscriptions load test
+    
+    ::
+    
+        start-subscriptions-rabbitmq-test.py
+
+    Or with docker compose:
+
+    ::
+
+        docker-compose -f compose-start-subscriptions-rabbitmq-test.yml up
+        WARNING: Found orphan containers (celeryrabbitmqsubscriber) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up.
+        Creating subsloadtest ... done
+        Attaching to subsloadtest
+
+#.  Verify the Queues are filling up
+
+    After a few seconds, the queues should be filling up with Account and Subscription messages that are being actively processed.
+
+    +-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+    |                     name                      | durable | auto_delete | consumers | messages | messages_ready | messages_unacknowledged |
+    +-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+    | celery.rabbit.sub                             | True    | False       | 1         | 0        | 0              | 0                       |
+    +-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+    | celery@rabbitmq_bootstep.celery.pidbox        | False   | True        | 1         | 0        | 0              | 0                       |
+    +-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+    | celeryev.a1ccb5f7-4f76-4e26-9cdc-bf5438ba5362 | False   | True        | 1         | 0        | 0              | 0                       |
+    +-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+    | celeryev.f85fe29a-b729-48fa-a17d-b7e12c14dba8 | False   | True        | 1         | 0        | 0              | 0                       |
+    +-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+    | reporting.accounts                            | True    | False       | 1         | 31157    | 31154          | 3                       |
+    +-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+    | reporting.subscriptions                       | True    | False       | 1         | 30280    | 30277          | 3                       |
+    +-----------------------------------------------+---------+-------------+-----------+----------+----------------+-------------------------+
+
+#.  Verify the Celery Bootstep Subscriber is processing messages
+
+    By default the Celery subscriber workers are processing 1 message at a time per consumer. In this example we started 3 workers so there are 3 messages that are unacknowledged at a time. Confirm messages are being processed ``from_rk=reporting.subscriptions`` and ``from_rk=reporting.accounts``. This means the Celery workers are processing messages that have routing keys from the different queues.
+
+    ::
+
+        2017-12-14 10:24:12,168: INFO callback received msg body={'data': {}, 'created': '2017-12-14T18:21:46.178164', 'msg_id': '66e0d69aa0_1'} from_ex= from_rk=reporting.subscriptions
+        2017-12-14 10:24:12,168: INFO callback received msg body={'data': {}, 'created': '2017-12-14T18:21:46.845445', 'msg_id': 'd64e18e7be_1'} from_ex= from_rk=reporting.accounts
+        2017-12-14 10:24:12,169: INFO callback received msg body={'data': {}, 'created': '2017-12-14T18:21:46.178278', 'msg_id': '712132669a_1'} from_ex= from_rk=reporting.subscriptions
+        2017-12-14 10:24:12,170: INFO callback received msg body={'data': {}, 'created': '2017-12-14T18:21:46.845478', 'msg_id': '2174427099_1'} from_ex= from_rk=reporting.accounts
+        2017-12-14 10:24:12,182: INFO callback received msg body={'data': {}, 'created': '2017-12-14T18:21:46.178345', 'msg_id': '1d4a251145_1'} from_ex= from_rk=reporting.subscriptions
+        2017-12-14 10:24:12,183: INFO callback received msg body={'data': {}, 'created': '2017-12-14T18:21:46.178380', 'msg_id': 'b62922b333_1'} from_ex= from_rk=reporting.subscriptions
+        2017-12-14 10:24:12,184: INFO callback received msg body={'data': {}, 'created': '2017-12-14T18:21:46.178404', 'msg_id': 'adc1b1988e_1'} from_ex= from_rk=reporting.subscriptions
+        2017-12-14 10:24:12,184: INFO callback received msg body={'data': {}, 'created': '2017-12-14T18:21:46.845491', 'msg_id': '91ac6c413c_1'} from_ex= from_rk=reporting.accounts
+        2017-12-14 10:24:12,184: INFO callback received msg body={'data': {}, 'created': '2017-12-14T18:21:46.845505', 'msg_id': '0ffd4abf90_1'} from_ex= from_rk=reporting.accounts
+        2017-12-14 10:24:12,185: INFO callback received msg body={'data': {}, 'created': '2017-12-14T18:21:46.845519', 'msg_id': '5a11d2aa97_1'} from_ex= from_rk=reporting.accounts
+        2017-12-14 10:24:12,185: INFO callback received msg body={'data': {}, 'created': '2017-12-14T18:21:46.178843', 'msg_id': '77dd35ade4_1'} from_ex= from_rk=reporting.subscriptions
+        2017-12-14 10:24:12,186: INFO callback received msg body={'data': {}, 'created': '2017-12-14T18:21:46.178944', 'msg_id': '2317ff179d_1'} from_ex= from_rk=reporting.subscriptions
+        2017-12-14 10:24:12,186: INFO callback received msg body={'data': {}, 'created': '2017-12-14T18:21:46.179021', 'msg_id': 'acce2d2672_1'} from_ex= from_rk=reporting.subscriptions
+        
+#.  Stop the Docker containers
+
+    Note: you can stop the docker containers while the tests are still publishing messages if you want. They should gracefully reconnect once the broker is restored.
+
+    ::
+
+        ./stop-redis-and-rabbitmq.sh 
+        Stopping redis and rabbitmq
+        Stopping celflowerredis  ... done
+        Stopping celflowerrabbit ... done
+        Stopping celrabbit1      ... done
+        Stopping celredis1       ... done
+
+#.  Confirm Celery was disconnected
+
+    ::
+
+        2017-12-14 10:27:00,213: INFO callback received msg body={'data': {}, 'created': '2017-12-14T18:21:46.995821', 'msg_id': 'a138cf8d8c_1'} from_ex= from_rk=reporting.accounts
+        2017-12-14 10:27:00,213: INFO callback received msg body={'data': {}, 'created': '2017-12-14T18:21:46.461333', 'msg_id': '406df22df7_1'} from_ex= from_rk=reporting.subscriptions
+        2017-12-14 10:27:00,214: INFO callback received msg body={'data': {}, 'created': '2017-12-14T18:21:46.461346', 'msg_id': 'a473232ee4_1'} from_ex= from_rk=reporting.subscriptions
+        2017-12-14 10:27:00,214: INFO callback received msg body={'data': {}, 'created': '2017-12-14T18:21:46.461361', 'msg_id': '12219ca1fd_1'} from_ex= from_rk=reporting.subscriptions
+        2017-12-14 10:27:00,330: WARNING consumer: Connection to broker lost. Trying to re-establish the connection...
+        Traceback (most recent call last):
+        File "/home/driver/dev/celery-connectors/venv/lib/python3.5/site-packages/celery/worker/consumer/consumer.py", line 320, in start
+            blueprint.start(self)
+        File "/home/driver/dev/celery-connectors/venv/lib/python3.5/site-packages/celery/bootsteps.py", line 119, in start
+            step.start(parent)
+        File "/home/driver/dev/celery-connectors/venv/lib/python3.5/site-packages/celery/worker/consumer/consumer.py", line 596, in start
+            c.loop(*c.loop_args())
+        File "/home/driver/dev/celery-connectors/venv/lib/python3.5/site-packages/celery/worker/loops.py", line 88, in asynloop
+            next(loop)
+        File "/home/driver/dev/celery-connectors/venv/lib/python3.5/site-packages/kombu-4.1.0-py3.5.egg/kombu/async/hub.py", line 354, in create_loop
+            cb(*cbargs)
+        File "/home/driver/dev/celery-connectors/venv/lib/python3.5/site-packages/kombu-4.1.0-py3.5.egg/kombu/transport/base.py", line 236, in on_readable
+            reader(loop)
+        File "/home/driver/dev/celery-connectors/venv/lib/python3.5/site-packages/kombu-4.1.0-py3.5.egg/kombu/transport/base.py", line 218, in _read
+            drain_events(timeout=0)
+        File "/home/driver/dev/celery-connectors/venv/lib/python3.5/site-packages/amqp-2.2.2-py3.5.egg/amqp/connection.py", line 471, in drain_events
+            while not self.blocking_read(timeout):
+        File "/home/driver/dev/celery-connectors/venv/lib/python3.5/site-packages/amqp-2.2.2-py3.5.egg/amqp/connection.py", line 476, in blocking_read
+            frame = self.transport.read_frame()
+        File "/home/driver/dev/celery-connectors/venv/lib/python3.5/site-packages/amqp-2.2.2-py3.5.egg/amqp/transport.py", line 226, in read_frame
+            frame_header = read(7, True)
+        File "/home/driver/dev/celery-connectors/venv/lib/python3.5/site-packages/amqp-2.2.2-py3.5.egg/amqp/transport.py", line 409, in _read
+            raise IOError('Socket closed')
+        OSError: Socket closed
+        2017-12-14 10:27:00,341: ERROR consumer: Cannot connect to amqp://rabbitmq:**@127.0.0.1:5672//: [Errno 104] Connection reset by peer.
+        Trying again in 2.00 seconds...
+
+        2017-12-14 10:27:02,369: ERROR consumer: Cannot connect to amqp://rabbitmq:**@127.0.0.1:5672//: [Errno 111] Connection refused.
+        Trying again in 4.00 seconds...
+
+#.  Start the Docker containers
+
+    ::
+
+        ./start-redis-and-rabbitmq.sh 
+        Starting redis and rabbitmq
+        Creating celrabbit1 ... done
+        Creating celredis1 ... 
+        Creating celflowerrabbit ... 
+        Creating celflowerredis ... 
+
+#.  Verify the Celery workers reconnected
+
+    ::
+
+        2017-12-14 10:28:50,841: INFO Connected to amqp://rabbitmq:**@127.0.0.1:5672//
+        2017-12-14 10:28:50,872: INFO mingle: searching for neighbors
+        2017-12-14 10:28:51,925: INFO mingle: all alone
+
+#.  Start the multi-queue load test publishers again
+
+    In terminal 1:
+
+    ::
+
+        ./start-subscriptions-rabbitmq-test.py
+
+    Or with docker compose:
+
+    ::
+    
+        docker-compose -f compose-start-load-test-rabbitmq.yml up
+
+    In terminal 2:
+
+    ::
+
+        ./start-load-test-rabbitmq.py
+
+    Or with docker compose:
+
+    ::
+
+        docker-compose -f compose-start-subscriptions-rabbitmq-test.yml up
+
+#.  Verify Celery is processing messages from both queues again
+
+    ::
+
+        2017-12-14 10:32:19,325: INFO callback received msg body={'data': {}, 'created': '2017-12-14T18:31:07.315190', 'msg_id': '22ede22ba6_1'} from_ex= from_rk=reporting.subscriptions
+        2017-12-14 10:32:19,326: INFO callback received msg body={'data': {}, 'created': '2017-12-14T18:31:07.315213', 'msg_id': '26f1103534_1'} from_ex= from_rk=reporting.subscriptions
+        2017-12-14 10:32:19,329: INFO callback received msg body={'data': {}, 'created': '2017-12-14T18:31:05.232153', 'msg_id': '10d7a731ca_1'} from_ex= from_rk=reporting.accounts
+        2017-12-14 10:32:19,333: INFO callback received msg body={'data': {}, 'created': '2017-12-14T18:31:05.232174', 'msg_id': 'ae75ede630_1'} from_ex= from_rk=reporting.accounts
+        2017-12-14 10:32:19,336: INFO callback received msg body={'data': {}, 'created': '2017-12-14T18:31:07.315225', 'msg_id': '0e86894ae3_1'} from_ex= from_rk=reporting.subscriptions
+        2017-12-14 10:32:19,337: INFO callback received msg body={'data': {}, 'created': '2017-12-14T18:31:05.232186', 'msg_id': '2066f80569_1'} from_ex= from_rk=reporting.accounts
+        2017-12-14 10:32:19,337: INFO callback received msg body={'data': {}, 'created': '2017-12-14T18:31:07.315240', 'msg_id': 'ea82241224_1'} from_ex= from_rk=reporting.subscriptions
+        2017-12-14 10:32:19,337: INFO callback received msg body={'data': {}, 'created': '2017-12-14T18:31:07.315264', 'msg_id': 'accbebead8_1'} from_ex= from_rk=reporting.subscriptions
+        2017-12-14 10:32:19,339: INFO callback received msg body={'data': {}, 'created': '2017-12-14T18:31:05.232198', 'msg_id': '8788b7fa97_1'} from_ex= from_rk=reporting.accounts
+
+Stop the Celery Bootstep example
+--------------------------------
+
+In all example terminal sessions, use: ``ctrl + c`` to stop any processes you no longer want to run.
+
+Restart the docker containers to a good, clean state for the next example.
+
+Stop:
+
+::
+    
+    stop-redis-and-rabbitmq.sh 
+    Stopping redis and rabbitmq
+    Stopping celrabbit1      ... done
+    Stopping celredis1       ... done
+    Stopping celflowerredis  ... done
+    Stopping celflowerrabbit ... done
+
+Start:
+
+::
+
+    start-redis-and-rabbitmq.sh 
+    Starting redis and rabbitmq
+    Creating celrabbit1 ... done
+
 Redis Message Processing Example
 ================================
 
@@ -730,11 +1244,34 @@ This example uses Celery bootsteps (http://docs.celeryproject.org/en/latest/user
         2017-12-09 08:20:04,050 - redis-publisher - INFO - SEND - exch=reporting.accounts rk=reporting.accounts
         2017-12-09 08:20:04,052 - run-redis-publisher - INFO - End - run-redis-publisher sent=True
 
+    Or with docker compose:
+
+    ::
+        
+        docker-compose -f compose-run-redis-publisher.yml up
+        Creating kombupubredis ... done
+        Attaching to kombupubredis
+        kombupubredis    | 2017-12-15 07:44:47,047 - run-redis-publisher - INFO - Start - run-redis-publisher
+        kombupubredis    | 2017-12-15 07:44:47,047 - run-redis-publisher - INFO - Sending msg={'account_id': 123, 'created': '2017-12-15T07:44:47.047355'} ex=reporting.accounts rk=reporting.accounts
+        kombupubredis    | 2017-12-15 07:44:47,127 - kombu-publisher - INFO - SEND - exch=reporting.accounts rk=reporting.accounts
+        kombupubredis    | 2017-12-15 07:44:47,132 - run-redis-publisher - INFO - End - run-redis-publisher sent=True
+        kombupubredis exited with code 0
+
 #.  Consume messages using the subscriber module
 
     ::
 
-        celery worker -A run_redis_subscriber --loglevel=INFO
+        celery worker -A run_redis_subscriber --loglevel=INFO -Ofair
+
+    Or with docker compose:
+
+    ::
+
+        docker-compose -f compose-run-celery-redis-subscriber.yml up
+        WARNING: Found orphan containers (kombupubredis) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up.
+        Creating celeryredissubscriber ... done
+        Attaching to celeryredissubscriber
+
 
 #.  Confirm the Celery worker received the message
 
@@ -760,165 +1297,6 @@ This example uses Celery bootsteps (http://docs.celeryproject.org/en/latest/user
         4) "_kombu.binding.reporting.accounts"
         5) "unacked_mutex"
         127.0.0.1:6379> 
-
-RabbitMQ Message Processing Example
-===================================
-
-This example uses Celery bootsteps (http://docs.celeryproject.org/en/latest/userguide/extending.html) to run a standalone, headless subscriber that consumes routed messages. It will set up a RabbitMQ topic exchange with a queue that is bound using a routing key. Once the entities are available in RabbitMQ, Kombu publishes the message to the exchange and RabbitMQ provides the messaging facility to route the messages to the subscribed celery workers' queue.
-
-#.  List the Queues
-
-    ::
-
-        list-queues.sh 
-
-        Listing Queues broker=localhost:15672
-        No items
-
-
-#.  Publish a message
-
-    ::
-
-        run_rabbitmq_publisher.py 
-        2017-12-09 11:00:54,419 - run-rabbitmq-publisher - INFO - Start - run-rabbitmq-publisher
-        2017-12-09 11:00:54,419 - run-rabbitmq-publisher - INFO - Sending msg={'account_id': 456, 'created': '2017-12-09T11:00:54.419829'} ex=reporting rk=reporting.accounts
-        2017-12-09 11:00:54,462 - rabbitmq-publisher - INFO - SEND - exch=reporting rk=reporting.accounts
-        2017-12-09 11:00:54,463 - run-rabbitmq-publisher - INFO - End - run-rabbitmq-publisher sent=True
-
-#.  Confirm the message is ready in the RabbitMQ Queue
-
-    Note the ``messages`` and ``messages_ready`` count increased while the ``messages_unacknowledged`` did not. Which is because we have not started the subscriber to process ready messages in the ``reporting.accounts`` queue.
-
-    ::
-
-        list-queues.sh 
-
-    Listing Queues broker=localhost:15672
-
-    +--------------------+-----------+----------+----------------+-------------------------+
-    |        name        | consumers | messages | messages_ready | messages_unacknowledged |
-    +--------------------+-----------+----------+----------------+-------------------------+
-    | reporting.accounts | 0         | 1        | 1              | 0                       |
-    +--------------------+-----------+----------+----------------+-------------------------+
-
-#.  List the Exchanges
-
-    ::
-
-        list-exchanges.sh 
-
-    Listing Exchanges broker=localhost:15672
-
-    +--------------------+---------+
-    |        name        |  type   |
-    +--------------------+---------+
-    |                    | direct  |
-    +--------------------+---------+
-    | amq.direct         | direct  |
-    +--------------------+---------+
-    | amq.fanout         | fanout  |
-    +--------------------+---------+
-    | amq.headers        | headers |
-    +--------------------+---------+
-    | amq.match          | headers |
-    +--------------------+---------+
-    | amq.rabbitmq.log   | topic   |
-    +--------------------+---------+
-    | amq.rabbitmq.trace | topic   |
-    +--------------------+---------+
-    | amq.topic          | topic   |
-    +--------------------+---------+
-    | reporting          | topic   |
-    +--------------------+---------+
-
-#.  Consume that message by starting up the producer celery module
-
-    ::
-
-        celery worker -A run_rabbitmq_subscriber --loglevel=INFO
-
-#.  Confirm the worker's logs show the message was received
-
-    ::
-
-        2017-12-09 11:02:38,608: INFO callback received msg body={u'account_id': 456, u'created': u'2017-12-09T11:00:54.419829'}
-
-#.  View the Rabbit Subscriber in Flower
-
-    Rabbit Flower server (login admin/admin)
-    
-    http://localhost:5555/
-
-#.  Verify the message is no longer in the Queue and Celery is connected as a consumer
-
-    With the Celery RabbitMQ worker still running, in a new terminal list the queues.
-
-    ::
-        
-        list-queues.sh
-
-    Listing Queues broker=localhost:15672
-
-    +-----------------------------------------------+-----------+----------+----------------+-------------------------+
-    |                     name                      | consumers | messages | messages_ready | messages_unacknowledged |
-    +-----------------------------------------------+-----------+----------+----------------+-------------------------+
-    | celery.rabbit.sub                             | 1         | 0        | 0              | 0                       |
-    +-----------------------------------------------+-----------+----------+----------------+-------------------------+
-    | celery@localhost.localdomain.celery.pidbox    | 1         | 0        | 0              | 0                       |
-    +-----------------------------------------------+-----------+----------+----------------+-------------------------+
-    | celeryev.788d17cb-de2d-444e-9a02-2b75fe76298c | 1         | 0        | 0              | 0                       |
-    +-----------------------------------------------+-----------+----------+----------------+-------------------------+
-    | reporting.accounts                            | 1         | 0        | 0              | 0                       |
-    +-----------------------------------------------+-----------+----------+----------------+-------------------------+
-
-#.  Stop the Celery RabbitMQ Subscriber worker with ``ctrl + c``
-
-    ::
-
-        2017-12-09 11:02:39,678: INFO celery@localhost.localdomain ready.
-        ^C
-        worker: Hitting Ctrl+C again will terminate all running tasks!
-
-        worker: Warm shutdown (MainProcess)
-
-#.  List the Queues after shutting down the Celery RabbitMQ Subscriber
-
-    Notice the ``reporting.accounts`` queue is still present even after stopping the worker.
-
-    ::
-
-        list-queues.sh 
-
-    Listing Queues broker=localhost:15672
-
-    +--------------------+-----------+----------+----------------+-------------------------+
-    |        name        | consumers | messages | messages_ready | messages_unacknowledged |
-    +--------------------+-----------+----------+----------------+-------------------------+
-    | celery.rabbit.sub  | 0         | 0        | 0              | 0                       |
-    +--------------------+-----------+----------+----------------+-------------------------+
-    | reporting.accounts | 0         | 0        | 0              | 0                       |
-    +--------------------+-----------+----------+----------------+-------------------------+
-
-#.  Inspect the Bindings for examining how RabbitMQ routes messages from Exchanges to Queues
-
-    ::
-
-        list-bindings.sh 
-
-    Listing Bindings broker=localhost:15672
-
-    +-------------------+--------------------+--------------------+
-    |      source       |    destination     |    routing_key     |
-    +-------------------+--------------------+--------------------+
-    |                   | celery.rabbit.sub  | celery.rabbit.sub  |
-    +-------------------+--------------------+--------------------+
-    |                   | reporting.accounts | reporting.accounts |
-    +-------------------+--------------------+--------------------+
-    | celery.rabbit.sub | celery.rabbit.sub  | celery.rabbit.sub  |
-    +-------------------+--------------------+--------------------+
-    | reporting         | reporting.accounts | reporting.accounts |
-    +-------------------+--------------------+--------------------+
 
 Redis Kombu Subscriber
 ======================
@@ -1004,6 +1382,19 @@ If you do not want to use Celery, you can use the ``KombuSubscriber`` class to p
         2017-12-09 11:53:56,973 - kombu-rabbitmq-subscriber - INFO - kombu-rabbitmq-subscriber - kombu.subscriber queues=reporting.accounts consuming with callback=handle_message
         2017-12-09 11:54:06,975 - kombu-rabbitmq-subscriber - INFO - End - kombu-rabbitmq-subscriber
 
+    Or with docker compose:
+
+    ::
+
+        docker-compose -f compose-kombu-rabbitmq-subscriber.yml up
+        Recreating kombusubrmq ... done
+        Attaching to kombusubrmq
+        kombusubrmq    | 2017-12-15 07:51:35,444 - kombu-rabbitmq-subscriber - INFO - Start - kombu-rabbitmq-subscriber
+        kombusubrmq    | 2017-12-15 07:51:35,445 - kombu-subscriber - INFO - setup routing
+        kombusubrmq    | 2017-12-15 07:51:35,479 - kombu-subscriber - INFO - kombu-rabbitmq-subscriber - kombu.subscriber queues=reporting.accounts consuming with callback=handle_message
+        kombusubrmq    | 2017-12-15 07:51:45,489 - kombu-rabbitmq-subscriber - INFO - End - kombu-rabbitmq-subscriber
+        kombusubrmq exited with code 0
+
 #.  Run the RabbitMQ Publisher
 
     ::
@@ -1013,6 +1404,19 @@ If you do not want to use Celery, you can use the ``KombuSubscriber`` class to p
         2017-12-09 11:56:42,793 - run-rabbitmq-publisher - INFO - Sending msg={'account_id': 456, 'created': '2017-12-09T11:56:42.793819'} ex=reporting rk=reporting.accounts
         2017-12-09 11:56:42,812 - rabbitmq-publisher - INFO - SEND - exch=reporting rk=reporting.accounts
         2017-12-09 11:56:42,814 - run-rabbitmq-publisher - INFO - End - run-rabbitmq-publisher sent=True
+
+    Or with docker compose:
+
+    ::
+
+        docker-compose -f compose-run-rabbitmq-publisher.yml up
+        Starting kombupubrmq ... done
+        Attaching to kombupubrmq
+        kombupubrmq    | 2017-12-15 07:51:50,931 - run-rabbitmq-publisher - INFO - Start - run-rabbitmq-publisher
+        kombupubrmq    | 2017-12-15 07:51:50,932 - run-rabbitmq-publisher - INFO - Sending msg={'account_id': 456, 'created': '2017-12-15T07:51:50.932501'} ex=reporting rk=reporting.accounts
+        kombupubrmq    | 2017-12-15 07:51:50,958 - kombu-publisher - INFO - SEND - exch=reporting rk=reporting.accounts
+        kombupubrmq    | 2017-12-15 07:51:50,960 - run-rabbitmq-publisher - INFO - End - run-rabbitmq-publisher sent=True
+        kombupubrmq exited with code 0
 
 #.  Run the RabbitMQ Kombu Subscriber
 
@@ -1026,6 +1430,20 @@ If you do not want to use Celery, you can use the ``KombuSubscriber`` class to p
         2017-12-09 11:57:07,103 - kombu-rabbitmq-subscriber - INFO - kombu-rabbitmq-subscriber - kombu.subscriber queues=reporting.accounts consuming with callback=handle_message
         2017-12-09 11:57:07,104 - kombu-rabbitmq-subscriber - INFO - callback received msg body={u'account_id': 456, u'created': u'2017-12-09T11:56:42.793819'}
         2017-12-09 11:57:07,104 - kombu-rabbitmq-subscriber - INFO - End - kombu-rabbitmq-subscriber
+
+    Or with docker compose:
+
+    ::
+        
+        docker-compose -f compose-kombu-rabbitmq-subscriber.yml up
+        Starting kombusubrmq ... done
+        Attaching to kombusubrmq
+        kombusubrmq    | 2017-12-15 07:51:55,366 - kombu-rabbitmq-subscriber - INFO - Start - kombu-rabbitmq-subscriber
+        kombusubrmq    | 2017-12-15 07:51:55,367 - kombu-subscriber - INFO - setup routing
+        kombusubrmq    | 2017-12-15 07:51:55,422 - kombu-subscriber - INFO - kombu-rabbitmq-subscriber - kombu.subscriber queues=reporting.accounts consuming with callback=handle_message
+        kombusubrmq    | 2017-12-15 07:51:55,423 - kombu-rabbitmq-subscriber - INFO - callback received msg body={'account_id': 456, 'created': '2017-12-15T07:51:50.932501'}
+        kombusubrmq    | 2017-12-15 07:51:55,424 - kombu-rabbitmq-subscriber - INFO - End - kombu-rabbitmq-subscriber
+        kombusubrmq exited with code 0
 
 Running a Redis Message Processor
 =================================
@@ -1042,6 +1460,16 @@ This will simulate setting up a processor that handles user conversion events us
         2017-12-09 12:09:14,329 - msg-sub - INFO - setup routing
         2017-12-09 12:09:14,351 - msg-sub - INFO - msg-sub - kombu.subscriber queues=user.events.conversions consuming with callback=process_message
 
+    Or with docker compose:
+
+    ::
+
+        docker-compose -f compose-kombu-message-processor-redis.yml up
+        Creating kombumsgprocredis ... done
+        Attaching to kombumsgprocredis
+        kombumsgprocredis    | 2017-12-15 07:54:24,167 - loader-name - INFO - Start - msg-proc
+        kombumsgprocredis    | 2017-12-15 07:54:24,168 - message-processor - INFO - msg-proc START - consume_queue=user.events.conversions rk=None callback=process_message
+
 #.  Publish a User Conversion Event
     
     From another terminal, publish a user conversion event
@@ -1054,6 +1482,20 @@ This will simulate setting up a processor that handles user conversion events us
         2017-12-09 12:09:16,582 - publish-uce-redis - INFO - SEND - exch=user.events rk=user.events.conversions
         2017-12-09 12:09:16,585 - publish-user-conversion-events - INFO - End - publish-user-conversion-events sent=True
 
+    Or with docker compose:
+
+    ::
+
+        docker-compose -f compose-publish-user-conversion-events-redis.yml up
+        WARNING: Found orphan containers (kombumsgprocredis) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up.
+        Creating ucepubredis ... done
+        Attaching to ucepubredis
+        ucepubredis    | 2017-12-15 07:54:40,539 - publish-user-conversion-events - INFO - Start - publish-user-conversion-events
+        ucepubredis    | 2017-12-15 07:54:40,539 - publish-user-conversion-events - INFO - Sending user conversion event msg={'account_id': 123, 'subscription_id': 456, 'stripe_id': 789, 'product_id': 'ABC', 'created': '2017-12-15T07:54:40.539324'} ex=user.events rk=user.events.conversions
+        ucepubredis    | 2017-12-15 07:54:40,619 - kombu-publisher - INFO - SEND - exch=user.events rk=user.events.conversions
+        ucepubredis    | 2017-12-15 07:54:40,623 - publish-user-conversion-events - INFO - End - publish-user-conversion-events sent=True
+        ucepubredis exited with code 0
+
 #.  Confirm the Processor handled the conversion event
 
     ::
@@ -1061,6 +1503,16 @@ This will simulate setting up a processor that handles user conversion events us
         2017-12-09 12:09:16,587 - msg-proc - INFO - msg-proc proc start - msg body={u'subscription_id': 456, u'product_id': u'ABC', u'stripe_id': 789, u'account_id': 123, u'created': u'2017-12-09T12:09:16.558462'}
         2017-12-09 12:09:16,587 - msg-proc - INFO - No auto-caching or pub-hook set exchange=None
         2017-12-09 12:09:16,588 - msg-proc - INFO - msg-proc proc done - msg
+
+    Or with the docker compose version should log:
+
+    ::
+
+        kombumsgprocredis    | 2017-12-15 07:54:24,167 - loader-name - INFO - Start - msg-proc
+        kombumsgprocredis    | 2017-12-15 07:54:24,168 - message-processor - INFO - msg-proc START - consume_queue=user.events.conversions rk=None callback=process_message
+        kombumsgprocredis    | 2017-12-15 07:54:24,168 - kombu-subscriber - INFO - setup routing
+        kombumsgprocredis    | 2017-12-15 07:54:40,625 - message-processor - INFO - msg-proc proc start - msg body={'account_id': 123, 'subscription_id': 456, 'stripe_id': 789, 'product_id': 'ABC', 'created': '2017-12-15T07:54:40.539324'}
+        kombumsgprocredis    | 2017-12-15 07:54:40,627 - message-processor - INFO - No auto-caching or pub-hook set exchange=None
 
 #.  Check the Redis keys for the new User Conversion Events key
 
@@ -1092,6 +1544,13 @@ This could also be set up for auto-caching instead of this pub-sub flow because 
         2017-12-09 12:25:09,962 - msg-proc - INFO - msg-proc START - consume_queue=user.events.conversions rk=reporting.accounts
         2017-12-09 12:25:09,962 - msg-sub - INFO - setup routing
         2017-12-09 12:25:09,987 - msg-sub - INFO - msg-sub - kombu.subscriber queues=user.events.conversions consuming with callback=process_message
+
+    Docker compose can start this too:
+
+    ::
+
+        docker stop worker;docker rm worker;
+        docker-compose -f compose-kombu-message-processor-rabbitmq.yml up
 
 #.  Send a User Conversion Event to RabbitMQ
 
@@ -1153,6 +1612,12 @@ I have opened a PR for fixing the kombu http client.
         2017-12-09 12:49:26,237 - kombu-sqs-publisher - INFO - SEND - exch=test1 rk=test1
         2017-12-09 12:49:26,352 - kombu-sqs-publisher - INFO - End - kombu-sqs-publisher sent=True
 
+    Or with docker compose:
+
+    ::
+
+        docker-compose -f compose-kombu-sqs-publisher.yml up
+
 #.  Subscribe to SQS
 
     Please see the debugging section for getting this to function with kombu 4.1.0 
@@ -1169,6 +1634,12 @@ I have opened a PR for fixing the kombu http client.
         2017-12-09 12:49:42,517 - kombu-sqs-subscriber - INFO - kombu-sqs-subscriber - kombu.subscriber queues=test1 consuming with callback=handle_message
         2017-12-09 12:49:42,671 - kombu-sqs-subscriber - INFO - callback received msg body={u'subscription_id': 222, u'created': u'2017-12-09T12:49:24.901513', u'stripe_id': 333, u'product_id': u'DEF', u'account_id': 111}
         2017-12-09 12:49:42,773 - kombu-sqs-subscriber - INFO - End - kombu-sqs-subscriber
+    
+    Or with docker compose:
+
+    ::
+
+        docker-compose -f compose-kombu-sqs-subscriber.yml up
 
 #.  Verify the SQS Queue ``test1`` is empty
 

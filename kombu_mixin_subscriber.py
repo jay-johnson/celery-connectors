@@ -29,7 +29,8 @@ def handle_message(body, message):
 # Initialize KombuSubscriber
 ssl_options = {}
 sub = KombuSubscriber("kombu-mixin-subscriber",
-                      ev("BROKER_URL", "amqp://rabbitmq:rabbitmq@localhost:5672//"),
+                      ev("SUB_BROKER_URL",
+                         "amqp://rabbitmq:rabbitmq@localhost:5672//"),
                       ssl_options)
 
 
@@ -37,9 +38,9 @@ sub = KombuSubscriber("kombu-mixin-subscriber",
 seconds_to_consume = 10.0
 heartbeat = 60
 serializer = "application/json"
-exchange = "reporting.payments"
-routing_key = "reporting.payments"
-queue = "reporting.payments"
+exchange = ev("CONSUME_EXCHANGE", "reporting.payments")
+routing_key = ev("CONSUME_ROUTING_KEY", "reporting.payments")
+queue = ev("CONSUME_QUEUE", "reporting.payments")
 sub.consume(callback=handle_message,
             queue=queue,
             exchange=exchange,

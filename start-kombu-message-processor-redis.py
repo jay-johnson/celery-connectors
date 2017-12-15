@@ -27,7 +27,7 @@ msg_proc = MessageProcessor(name=name,
                             pub_ssl_options=pub_ssl_options)
 
 # configure where this is consuming:
-queue = "user.events.conversions"
+queue = ev("CONSUME_QUEUE", "user.events.conversions")
 
 # Relay Publish Hook - is disabled for this example
 # where is it sending handled messages using a publish-hook or auto-caching:

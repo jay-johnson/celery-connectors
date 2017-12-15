@@ -21,7 +21,7 @@ class BaseTestCase(unittest.TestCase):
     exchange = None
     queue = None
 
-    rabbitmq_auth_url = ev("TEST_RABBITMQ_BROKER_URL", "amqp://rabbitmq:rabbitmq@localhost:5672//")
+    rabbitmq_auth_url = ev("TEST_RABBITMQ_BROKER_URL", "pyamqp://rabbitmq:rabbitmq@localhost:5672//")
     redis_auth_url = ev("TEST_REDIS_BROKER_URL", "redis://localhost:6379/0")
 
     pub_auth_url = rabbitmq_auth_url

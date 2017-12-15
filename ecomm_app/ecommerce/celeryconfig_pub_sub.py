@@ -1,4 +1,4 @@
-broker_url = "amqp://rabbitmq:rabbitmq@localhost:5672//"
+broker_url = "pyamqp://rabbitmq:rabbitmq@localhost:5672//"
 result_backend = "redis://localhost:6379/10"
 
 # http://docs.celeryproject.org/en/latest/userguide/optimizing.html

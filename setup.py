@@ -54,7 +54,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "celery_connectors"))
 setup(
     name="celery-connectors",
     cmdclass={"build_py": build_py},
-    version="1.0.19",
+    version="1.0.20",
     description="Celery Connectors",
     long_description="Messaging examples for Celery and Kombu. " +
     "Multiple publisher-subscriber examples for processing json or " +
@@ -91,6 +91,7 @@ setup(
         "./celery_connectors/rabbitmq/rmq-trace-on.sh",
         "./celery_connectors/rabbitmq/rmq-trace-off.sh",
         "./celery_connectors/rabbitmq/rmq-status.sh",
+        "./celery_connectors/rabbitmq/watch-queues.sh",
         "./celery_connectors/scripts/subscribe-to-rabbitmq.sh",
         "./celery_connectors/scripts/subscribe-to-redis.sh",
         "./publish-user-conversion-events-redis.py",
@@ -101,6 +102,9 @@ setup(
         "./start-mixin-celery-relay.py",
         "./start-mixin-publisher.py",
         "./start-mixin-load-test.py",
+        "./start-load-test-rabbitmq.py",
+        "./start-subscriptions-rabbitmq-test.py",
+        "./start-load-test-redis.py",
         "./run_rabbitmq_publisher.py",
         "./run_redis_publisher.py",
         "./kombu_rabbitmq_subscriber.py",

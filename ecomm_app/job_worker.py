@@ -11,7 +11,7 @@ log = logging.getLogger(name)
 
 log.info("Start - {}".format(name))
 
-default_broker_url = "amqp://rabbitmq:rabbitmq@localhost:5672//"
+default_broker_url = "pyamqp://rabbitmq:rabbitmq@localhost:5672//"
 default_backend_url = "redis://localhost:6379/10"
 default_config_module = "ecomm_app.ecommerce.celeryconfig_pub_sub"
 

@@ -23,18 +23,20 @@ log.info("Start - {}".format(name))
 def relay_callback(body, message):
 
     pub_auth_url = ev("RELAY_WORKER_BROKER_URL",
-                      "amqp://rabbitmq:rabbitmq@localhost:5672//")
+                      "pyamqp://rabbitmq:rabbitmq@localhost:5672//")
     pub_backend_url = ev("RELAY_BACKEND_URL",
                          "redis://localhost:6379/12")
-    path_to_config_module = "ecomm_app.ecommerce.celeryconfig_pub_sub"
+    path_to_config_module = ev("RELAY_CONFIG_MODULE",
+                               "ecomm_app.ecommerce.celeryconfig_pub_sub")
 
     app = ecomm_app.ecommerce.tasks.get_celery_app(
-            name="demo",
+            name=ev("RELAY_NAME", "ecomm-relay"),
             auth_url=pub_auth_url,
             backend_url=pub_backend_url,
             path_to_config_module=path_to_config_module)
 
-    task_name = "ecomm_app.ecommerce.tasks.handle_user_conversion_events"
+    task_name = ev("RELAY_TASK_NAME",
+                   "ecomm_app.ecommerce.tasks.handle_user_conversion_events")
     now = datetime.now().isoformat()
     body = {"account_id": 999,
             "subscription_id": 321,
@@ -79,9 +81,11 @@ def relay_callback(body, message):
 
 # want to change where you're subscribing vs publishing?
 sub_ssl_options = {}
-sub_auth_url = ev("SUB_BROKER_URL", "amqp://rabbitmq:rabbitmq@localhost:5672//")
+sub_auth_url = ev("SUB_BROKER_URL",
+                  "pyamqp://rabbitmq:rabbitmq@localhost:5672//")
 pub_ssl_options = {}
-pub_auth_url = ev("PUB_BROKER_URL", "redis://localhost:6379/0")
+pub_auth_url = ev("PUB_BROKER_URL",
+                  "redis://localhost:6379/0")
 
 # start the message processor
 msg_proc = MessageProcessor(name=name,
@@ -91,12 +95,12 @@ msg_proc = MessageProcessor(name=name,
                             pub_ssl_options=pub_ssl_options)
 
 # configure where this is consuming:
-queue = "user.events.conversions"
+queue = ev("CONSUME_QUEUE", "user.events.conversions")
 
 # Relay Publish Hook - sending to Redis
 # where is it sending handled messages using a publish-hook or auto-caching:
-exchange = "reporting.accounts"
-routing_key = "reporting.accounts"
+exchange = ev("PUBLISH_EXCHANGE", "reporting.accounts")
+routing_key = ev("PUBLISH_ROUTING_KEY", "reporting.accounts")
 
 # set up the controls and long-term connection attributes
 seconds_to_consume = 10.0

@@ -1,0 +1,37 @@
+version: '2'
+
+services:
+
+  # Celery Connectors
+  kombumixinsubrmq:
+    hostname: kombumixinsubrmq
+    image: jayjohnson/celery-connectors:latest
+    env_file: ./env/common-celery-connectors.env
+    environment:
+      - APP_NAME=mixin-rmq-sub
+      - SUBSCRIBER_NAME=rmq-sub
+      - SUB_BROKER_URL=pyamqp://rabbitmq:rabbitmq@localhost:5672//
+      - CONSUME_EXCHANGE=reporting.payments
+      - CONSUME_ROUTING_KEY=reporting.payments
+      - CONSUME_QUEUE=reporting.payments
+      - PUBLISH_NAME=
+      - PUB_BROKER_URL=
+      - PUBLISH_EXCHANGE=
+      - PUBLISH_ROUTING_KEY=
+      - PUBLISH_QUEUE=
+    labels:
+      NAME: "kombumixinsubrmq"
+    container_name: "kombumixinsubrmq"
+    network_mode: "host"
+    # volumes:
+      # want to shared files outside the container?
+      # - /tmp:/opt/shared
+    logging:
+      # limit logs retained on host to 25MB
+      driver: "json-file"
+      options:
+        max-size: "500k"
+        max-file: "50"
+    # debug containers by sleeping on entrypoint
+    # entrypoint: "sleep 600"
+    entrypoint: "/opt/celery_connectors/venv/bin/python /opt/celery_connectors/kombu_mixin_subscriber.py"
