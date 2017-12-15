@@ -10,7 +10,7 @@ Each example below can run as a docker container with the included docker-compos
 .. _Celery: http://docs.celeryproject.org/en/latest/
 .. _compose directory: https://github.com/jay-johnson/celery-connectors/tree/master/compose
 
-Here's the JSON-to-Celery ecomm relay example in action. By using docker-compose you can use container monitoring tools to benchmark resources stats to figure out your deployment footprint and address bottlenecks. 
+Here's the JSON-to-Celery ecomm relay example in action. By using docker-compose you can use container monitoring tools to benchmark resources and throughput to figure out your deployment footprint and address bottlenecks. 
 
 .. image:: https://github.com/jay-johnson/celery-connectors/blob/master/_images/celery-connectors-json-to-celery-relay-with-existing-ecomm-celery-app.gif
     :align: center
