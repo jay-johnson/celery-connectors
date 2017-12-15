@@ -5,10 +5,15 @@ Celery_ is a great framework for processing messages from a message queue broker
 
 It has multiple examples on setting up working publisher-subscriber messaging workflows using Celery, Celery Bootsteps, Kombu, and Kombu mixins. These examples are focused on finding a starting ground to tune for high availability + performance + reduce the risk of message loss. By using the included docker containers combined with the included load tests, you can start to vet your solution won't wake you up in the middle of the night during an outage.
 
-Each example below can run as a docker container with the included docker-compose files in the `compose directory`_. Please note these docker-compose steps are optional and the consumer counts in the documentation below will only refer to the non-dockerized, repository versions.
+Each example below can run as a docker container with the included docker-compose files in the `compose directory`_. Please note these docker-compose steps are optional and the consumer counts in the documentation below will only refer to the non-dockerized, repository versions. 
 
 .. _Celery: http://docs.celeryproject.org/en/latest/
 .. _compose directory: https://github.com/jay-johnson/celery-connectors/tree/master/compose
+
+Here's the JSON-to-Celery ecomm relay example in action. By using docker-compose you can use container monitoring tools to benchmark resources stats to figure out your deployment footprint and address bottlenecks. 
+
+.. image:: https://github.com/jay-johnson/celery-connectors/blob/master/_images/celery-connectors-json-to-celery-relay-with-existing-ecomm-celery-app.gif
+    :align: center
 
 Why do I care?
 --------------
