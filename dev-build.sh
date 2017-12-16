@@ -9,7 +9,7 @@ log=/dev/null
 source ./properties.sh
 
 rm -f celery_connectors-*.tgz
-include_these="celery_connectors docker ecomm_app tests kombu_*.py publish-*.py run_*.py start-*.sh start-*.py stop-*.sh tox.ini README.rst setup.cfg setup.py"
+include_these="celery_connectors ecomm_app tests kombu_*.py publish-*.py run_*.py start-*.sh start-*.py stop-*.sh tox.ini README.rst setup.cfg setup.py"
 echo "Creating src build tar for tag=${tag} including=${include_these}"
 tar zcvf celery_connectors-${tag}.tgz ${include_these}
 cp celery_connectors-${tag}.tgz celery_connectors-latest.tgz

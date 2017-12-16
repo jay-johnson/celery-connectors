@@ -3,17 +3,17 @@ Celery Connectors
 
 Celery_ is a great framework for processing messages from a message queue broker like Redis or RabbitMQ. If you have a queue with json or pickled messages that you need to consume and process, then hopefully this repository will help you out.
 
-It has multiple examples on setting up working publisher-subscriber messaging workflows using Celery, Celery Bootsteps, Kombu, and Kombu mixins. These examples are focused on finding a starting ground to tune for high availability + performance + reduce the risk of message loss. By using the included docker containers combined with the included load tests, you can start to vet your solution won't wake you up in the middle of the night during an outage.
+It has multiple examples on setting up working publisher-subscriber messaging workflows using Celery, Celery Bootsteps, Kombu, and Kombu mixins. These examples are focused on finding a starting ground to tune for high availability + performance + reduce the risk of message loss (the dockerized celery bootstep worker can processes around 100,000 messages in 90 seconds with 3 workers). By using the included docker containers combined with the included load tests, you can start to vet your solution won't wake you up in the middle of the night during an outage.
 
-Each example below can run as a docker container with the included docker-compose files in the `compose directory`_. Please note these docker-compose steps are optional and the consumer counts in the documentation below will only refer to the non-dockerized, repository versions. 
-
-.. _Celery: http://docs.celeryproject.org/en/latest/
-.. _compose directory: https://github.com/jay-johnson/celery-connectors/tree/master/compose
+Each example below can run as a docker container with the included docker-compose files in the `compose directory`_. Please note these docker-compose steps are optional and the consumer counts in the documentation below will only refer to the non-dockerized, repository versions.
 
 Here's the JSON-to-Celery ecomm relay example in action. By using docker-compose you can use container monitoring tools to benchmark resources and throughput to figure out your deployment footprint and address bottlenecks. 
 
 .. image:: https://github.com/jay-johnson/celery-connectors/blob/master/_images/celery-connectors-json-to-celery-relay-with-existing-ecomm-celery-app.gif
     :align: center
+
+.. _Celery: http://docs.celeryproject.org/en/latest/
+.. _compose directory: https://github.com/jay-johnson/celery-connectors/tree/master/compose
 
 Why do I care?
 --------------
@@ -58,6 +58,12 @@ How do I get started?
     ::
 
         start-redis-and-rabbitmq.sh
+
+    Or if your docker version and OS support container volume-mounting, then you can persist Redis and RabbitMQ messages and data to disk with:
+
+    ::
+
+        ./start-persistence-containers.sh
 
 #.  Check the Redis and RabbitMQ containers are running
 
@@ -1873,7 +1879,7 @@ Development Guide
 
     ::
 
-        virtualenv -p python3 venv && source venv/bin/activate && python setup.py develop
+        virtualenv -p python3 venv && source venv/bin/activate && pip install -e .
 
 #.  Run tests
 
@@ -2035,6 +2041,39 @@ This will send 50,000 messages over the ``user.events.conversions`` RabbitMQ que
 
     python -m unittest tests/load_test_relay_rabbitmq.py
     
+Cleanup Persistence
+-------------------
+
+Docker compose creates files and directories as the host's ``root`` user. This makes cleaning up test runs annoying. So here's a tool to clean the persistence data and logs but it requires providing ``sudo`` or running as ``root``.
+
+**Please, please, please be careful!**
+
+#.  Shut them down to prevent writes to the volumes
+
+    ::
+
+        stop-redis-and-rabbitmq.sh
+
+#.  Clean them up
+
+    ::
+
+        sudo ./clean-persistence-data.sh 
+
+        Using root to delete persistence directories: ./docker/data/rabbitmq/ ./docker/data/redis and logs: ./docker/logs/rabbitmq ./docker/logs/redis and files: ./docker/data/rabbitmq/.erlang.cookie
+
+        - deleting=./docker/data/rabbitmq
+        - deleting=./docker/logs/rabbitmq
+        - deleting=./docker/data/redis
+        - deleting=./docker/logs/redis
+        - deleting=./docker/data/rabbitmq/.erlang.cookie
+
+#.  Start them up again
+
+    ::
+
+        start-persistence-containers.sh
+
 Linting
 -------
 

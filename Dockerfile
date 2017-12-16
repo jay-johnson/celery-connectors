@@ -28,7 +28,7 @@ RUN echo "Starting Build"
 RUN cd /opt/celery_connectors \
   && virtualenv -p python3 /opt/celery_connectors/venv \
   && source /opt/celery_connectors/venv/bin/activate \
-  && python setup.py develop
+  && pip install -e .
 
 ENV START_SCRIPT /opt/celery_connectors/celery_connectors/scripts/start-container.sh 
 ENV LOG_DIR /opt/logs

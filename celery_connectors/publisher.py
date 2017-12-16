@@ -133,6 +133,7 @@ class Publisher:
                 queue,
                 priority=0,
                 ttl=None,
+                delivery_mode=2,      # 1 - transient, 2 - persistent
                 serializer="json",
                 retry=True,
                 silent=False,
@@ -187,6 +188,7 @@ class Publisher:
                              self.routing_key))
 
         # http://docs.celeryproject.org/projects/kombu/en/latest/_modules/kombu/messaging.html#Producer.publish
+        # http://docs.celeryproject.org/projects/kombu/en/latest/reference/kombu.html#kombu.Exchange.delivery_mode
         try:
             self.producer.publish(
                     body=body,
@@ -195,6 +197,7 @@ class Publisher:
                     auto_declare=True,
                     serializer=self.serializer,
                     priority=priority,
+                    delivery_mode=delivery_mode,
                     expiration=ttl,
                     retry=False,
                     *args,

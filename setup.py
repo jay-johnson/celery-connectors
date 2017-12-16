@@ -54,7 +54,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "celery_connectors"))
 setup(
     name="celery-connectors",
     cmdclass={"build_py": build_py},
-    version="1.0.20",
+    version="1.0.21",
     description="Celery Connectors",
     long_description="Messaging examples for Celery and Kombu. " +
     "Multiple publisher-subscriber examples for processing json or " +
@@ -114,6 +114,7 @@ setup(
         "./kombu_mixin_subscriber.py",
         "./start-redis-and-rabbitmq.sh",
         "./stop-redis-and-rabbitmq.sh",
+        "./start-persistence-containers.sh",
         "./start-ecomm-relay.py"
     ],
     use_2to3=True,
