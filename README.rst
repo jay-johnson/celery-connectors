@@ -3,7 +3,7 @@ Celery Connectors
 
 Celery_ is a great framework for processing messages from a message queue broker like Redis or RabbitMQ. If you have a queue with json or pickled messages that you need to consume and process, then hopefully this repository will help you out.
 
-It has multiple examples on setting up working publisher-subscriber messaging workflows using Celery, Celery Bootsteps, Kombu, and Kombu mixins. These examples are focused on finding a starting ground to tune for high availability + performance + reduce the risk of message loss (the dockerized celery bootstep worker can processes around 100,000 messages in 90 seconds with 3 workers). By using the included docker containers combined with the included load tests, you can start to vet your solution won't wake you up in the middle of the night during an outage.
+It has multiple examples on setting up working publisher-subscriber messaging workflows using Celery, Celery Bootsteps, Kombu, and Kombu mixins. These examples are focused on finding a starting ground to tune for high availability + performance + reduce the risk of message loss (the dockerized celery bootstep rabbitmq subscriber can process around **100,000 messages in 90 seconds** with 3 workers). By using the included docker containers combined with the included load tests, you can start to vet your solution won't wake you up in the middle of the night during an outage.
 
 Each example below can run as a docker container with the included docker-compose files in the `compose directory`_. Please note these docker-compose steps are optional and the consumer counts in the documentation below will only refer to the non-dockerized, repository versions.
 
