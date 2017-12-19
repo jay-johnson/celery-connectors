@@ -1,0 +1,120 @@
+- hosts: all
+  connection: local
+  gather_facts: no
+
+  pre_tasks:
+    - set_fact: src_openssl_config="./configs/openssl.cnf"
+    - set_fact: dst_openssl_config="../compose/ssl/openssl.cnf"
+    - set_fact: src_ext_file="./configs/extfile.cnf"
+    - set_fact: dst_ext_file="../compose/ssl/extfile.cnf"
+    - set_fact: server_key="../compose/ssl/server_key.pem"
+    - set_fact: server_csr="../compose/ssl/server.csr"
+    - set_fact: server_cert="../compose/ssl/server_cert.pem"
+    - set_fact: client_key="../compose/ssl/client_key.pem"
+    - set_fact: client_csr="../compose/ssl/client_csr.pem"
+    - set_fact: client_cert="../compose/ssl/client_cert.pem"
+    - set_fact: src_ca_srl="./configs/ssl/ca.srl"
+    - set_fact: ca_private_key="../compose/ssl/ca_private_key.pem"
+    - set_fact: ca_file="../compose/ssl/ca.pem"
+    - set_fact: country="US"
+    - set_fact: state="WA"
+    - set_fact: location="Redmond"
+    - set_fact: org="SecureEverything"
+    - set_fact: common_name="SecureEverything"
+    - set_fact: fqdn="localdev.com"
+    - set_fact: valid_days="365"
+
+  tasks:
+
+    - name: Set Subject
+      set_fact: subject="/C={{country}}/ST={{state}}/L={{location}}/O={{org}}/CN={{fqdn}}"
+
+    - name: Installing base OpenSSL config and Extfile
+      shell: cp {{src_openssl_config}} {{dst_openssl_config}} && \
+               cp {{src_ext_file}} {{dst_ext_file}}
+
+    - name: Create CA Private Key
+      command: openssl genrsa -out {{ca_private_key}} 4096
+
+    - name: Create CA
+      command: openssl req \
+        -config {{dst_openssl_config}} \
+        -nodes -new -x509 \
+        -days {{valid_days}} \
+        -key {{ca_private_key}} \
+        -sha256 \
+        -out {{ca_file}}
+
+    - name: Create Server Key
+      command: openssl genrsa \
+        -out {{server_key}} 4096
+
+    - name: Create Server CSR -subj={{subject}}
+      command: openssl req \
+        -subj "/CN={{fqdn}}" \
+        -sha256 -new \
+        -key {{server_key}} \
+        -out {{server_csr}}
+
+    - name: Create Server CSR
+      command: openssl req \
+        -subj "/CN={{fqdn}}" \
+        -sha256 \
+        -new -key {{server_key}} \
+        -out {{server_csr}}
+
+    - name: Installing Subject Alt Name and extendedKeyUsage
+      command: echo "subjectAltName = DNS:{{fqdn}},IP:10.10.10.20,IP:127.0.0.1" > {{dst_ext_file}} \
+        && echo "extendedKeyUsage = serverAuth" >> {{dst_ext_file}}
+
+    - name: Generate Signed Server Cert
+      command: openssl x509 \
+        -req \
+        -days {{valid_days}} \
+        -sha256 -in {{server_csr}} \
+        -CA {{ca_file}} \
+        -CAkey {{ca_private_key}} \
+        -CAcreateserial -out {{server_cert}} \
+        -extfile {{dst_ext_file}}
+
+    - name: Create Client Key
+      command: openssl genrsa \
+        -out {{client_key}} 4096
+
+    - name: Create Client CSR
+      command: openssl req \
+        -subj '/CN=client' \
+        -new -key {{client_key}} \
+        -out {{client_csr}}
+
+    - name: Install Client Auth to extfile
+      command: echo extendedKeyUsage = clientAuth >> {{dst_ext_file}}
+
+    - name: Sign the Client Cert
+      command: openssl x509 
+        -req \
+        -days {{valid_days}} \
+        -sha256 \
+        -in {{client_csr}} \
+        -CA {{ca_file}} \
+        -CAkey {{ca_private_key}} \
+        -CAcreateserial -out {{client_cert}} \
+        -extfile {{dst_ext_file}}
+
+    - name: Testing Client Cert
+      shell: openssl x509 -in {{client_cert}} -text -noout | grep {{fqdn}} | wc -l
+      register: test_client_cert
+    
+    - name: Testing Server Cert
+      shell: openssl x509 -in {{server_cert}} -text -noout | grep {{fqdn}} | wc -l
+      register: test_server_cert
+
+    - name: Verifying Client Cert
+      fail:
+        msg: "Please check the client cert={{client_cert}} was created correctly {{fqdn}} count={{test_client_cert}}"
+      when: test_client_cert.stdout != "2"
+    
+    - name: Verifying Server Cert
+      fail:
+        msg: "Please check the server cert={{server_cert}} was created correctly {{fqdn}} count={{test_server_cert}}"
+      when: test_server_cert.stdout != "3"

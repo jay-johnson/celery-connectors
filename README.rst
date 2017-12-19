@@ -2074,6 +2074,80 @@ Docker compose creates files and directories as the host's ``root`` user. This m
 
         start-persistence-containers.sh
 
+Create your own self-signed Keys, Certs and Certificate Authority with Ansible
+------------------------------------------------------------------------------
+
+If you have openssl installed you can use this ansible playbook to create your own certificate authority (CA), keys and certs.
+
+#.  Create the CA, Keys and Certificates
+
+    ::
+        
+        cd ansible
+        ansible-playbook -i inventory_dev create-x509s.yml
+
+#.  Verify the Client Cert
+
+    ::
+
+        openssl x509 -in ../compose/ssl/client_cert.pem -text -noout
+
+#.  Verify the Server Cert
+
+    ::
+
+        openssl x509 -in ../compose/ssl/server_cert.pem -text -noout
+
+#.  Using the certs
+
+    Docker makes testing ssl easier so the certs are created under the ``compose/ssl`` directory:
+
+    ::
+
+        tree ../compose/ssl
+        ├── ca.pem
+        ├── ca_private_key.pem
+        ├── client_cert.pem
+        ├── client_csr.pem
+        ├── client_key.pem
+        ├── extfile.cnf
+        ├── openssl.cnf
+        ├── server_cert.pem
+        ├── server.csr
+        └── server_key.pem
+
+#.  Set up your own extfile.cnf - Optional
+
+    You can change the source ``extfile.cnf`` which is copied over to the ``compose/ssl`` directory when the playbook runs as needed.
+
+    ::
+
+        cat ./configs/extfile.cnf 
+        subjectAltName = DNS:localdev.com,IP:10.10.10.20,IP:127.0.0.1
+        extendedKeyUsage = serverAuth
+        extendedKeyUsage = clientAuth
+
+#.  Set up your own openssl.cnf - Optional
+
+    You can change the source ``openssl.cnf`` which is copied over to the ``compose/ssl`` directory when the playbook runs as needed.
+
+    ::
+
+        cat ./configs/openssl.cnf 
+        [ req ]
+        prompt              = no
+        default_bits        = 2048
+        distinguished_name  = req_distinguished_name # where to get DN for reqs
+
+        [ req_distinguished_name ]
+        C  = US
+        ST = WA
+        L  = Redmond
+        O  = Secure Everything
+        OU = Security Systems
+        CN = *.localdev.com
+        emailAddress = admin@localdev.com
+
 Linting
 -------
 
@@ -2087,3 +2161,4 @@ License
 Apache 2.0 - Please refer to the LICENSE_ for more details
 
 .. _License: https://github.com/jay-johnson/celery-connectors/blob/master/LICENSE
+

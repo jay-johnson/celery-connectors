@@ -18,6 +18,7 @@ cur_path, cur_script = os.path.split(sys.argv[0])
 os.chdir(os.path.abspath(cur_path))
 
 install_requires = [
+    "ansible>=1.9",
     "pep8>=1.7.1",
     "flake8>=3.4.1",
     "boto3",
@@ -54,7 +55,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "celery_connectors"))
 setup(
     name="celery-connectors",
     cmdclass={"build_py": build_py},
-    version="1.0.21",
+    version="1.0.22",
     description="Celery Connectors",
     long_description="Messaging examples for Celery and Kombu. " +
     "Multiple publisher-subscriber examples for processing json or " +
