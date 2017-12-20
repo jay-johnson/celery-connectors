@@ -2163,8 +2163,8 @@ Running JupyterHub with Postgres and SSL
 #.  Verify ``/etc/hosts`` has the entries
 
     ::
-        cat /etc/hosts | grep localdev
 
+        cat /etc/hosts | grep localdev
         127.0.0.1      localhost localhost.localdomain localhost4 localhost4.localdomain4 jupyter.localdev.com rabbitmq.localdev.com redis.localdev.com
 
 #.  From the base repository directory, change to the ``compose`` directory
