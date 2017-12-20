@@ -2086,17 +2086,17 @@ If you have openssl installed you can use this ansible playbook to create your o
         cd ansible
         ansible-playbook -i inventory_dev create-x509s.yml
 
-#.  Verify the Client Cert
+#.  Verify the Jupyter Client Cert
 
     ::
 
         openssl x509 -in ../compose/ssl/client_cert.pem -text -noout
 
-#.  Verify the Server Cert
+#.  Verify the Jupyter Server Cert
 
     ::
 
-        openssl x509 -in ../compose/ssl/server_cert.pem -text -noout
+        openssl x509 -in ../compose/ssl/jupyter_server_cert.pem -text -noout
 
 #.  Using the certs
 
@@ -2108,13 +2108,19 @@ If you have openssl installed you can use this ansible playbook to create your o
         ├── ca.pem
         ├── ca_private_key.pem
         ├── client_cert.pem
-        ├── client_csr.pem
+        ├── client.csr
         ├── client_key.pem
         ├── extfile.cnf
+        ├── jupyter_server_cert.pem
+        ├── jupyter_server.csr
+        ├── jupyter_server_key.pem
         ├── openssl.cnf
-        ├── server_cert.pem
-        ├── server.csr
-        └── server_key.pem
+        ├── rabbitmq_server_cert.pem
+        ├── rabbitmq_server.csr
+        ├── rabbitmq_server_key.pem
+        ├── redis_server_cert.pem
+        ├── redis_server.csr
+        └── redis_server_key.pem
 
 #.  Set up your own extfile.cnf - Optional
 
@@ -2145,8 +2151,63 @@ If you have openssl installed you can use this ansible playbook to create your o
         L  = Redmond
         O  = Secure Everything
         OU = Security Systems
-        CN = *.localdev.com
-        emailAddress = admin@localdev.com
+        CN = LocalDev
+
+Running JupyterHub with Postgres and SSL
+----------------------------------------
+
+#.  Append the following entry to your ``/etc/hosts`` row with ``127.0.0.1``
+        
+    ``jupyter.localdev.com rabbitmq.localdev.com redis.localdev.com``
+
+#.  Verify ``/etc/hosts`` has the entries
+
+    ::
+        cat /etc/hosts | grep localdev
+
+        127.0.0.1      localhost localhost.localdomain localhost4 localhost4.localdomain4 jupyter.localdev.com rabbitmq.localdev.com redis.localdev.com
+
+#.  From the base repository directory, change to the ``compose`` directory
+
+    ::
+
+        cd compose
+
+#.  Start JupyterHub
+
+    ::
+
+        docker stop jupyterhub ; docker rm jupyterhub; docker-compose -f compose-jupyter.yml up
+
+#.  Login to JupyterHub
+
+    Please change these defaults before deploying to production:
+
+    - username: ``admin``
+    - password: ``admin``
+
+    Please accept to "Proceed" past the self-signed certificate warning.
+
+    https://jupyter.localdev.com/hub/login
+
+    Ignore the server status error and continue to the admin page:
+
+    https://jupyter.localdev.com/hub/admin
+
+    It should look something like this:
+
+.. image:: https://github.com/jay-johnson/celery-connectors/blob/master/_images/runnning-jupyter-hub-with-ssl.png
+    :align: center
+
+#.  TODO
+
+    Fix server spawn error on user login... looks like the image is wrong in my compose file
+
+    ::
+
+        jupyterhub  | [I 2017-12-20 08:50:28.636 JupyterHub dockerspawner:452] Container 'jupyter-admin' is gone
+        jupyterhub  | [E 2017-12-20 08:50:28.642 JupyterHub user:427] Unhandled error starting admin's server: 404 Client Error: Not Found ("No such image: nbgallery/jupyter-alpine")
+        jupyterhub  | [I 2017-12-20 08:50:28.646 JupyterHub dockerspawner:452] Container 'jupyter-admin' is gone
 
 Linting
 -------

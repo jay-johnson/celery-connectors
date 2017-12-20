@@ -9,5 +9,4 @@ ST = WA
 L  = Redmond
 O  = Secure Everything
 OU = Security Systems
-CN = *.localdev.com
-emailAddress = admin@localdev.com
+CN = LocalDev

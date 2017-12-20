@@ -7,11 +7,20 @@
     - set_fact: dst_openssl_config="../compose/ssl/openssl.cnf"
     - set_fact: src_ext_file="./configs/extfile.cnf"
     - set_fact: dst_ext_file="../compose/ssl/extfile.cnf"
-    - set_fact: server_key="../compose/ssl/server_key.pem"
-    - set_fact: server_csr="../compose/ssl/server.csr"
-    - set_fact: server_cert="../compose/ssl/server_cert.pem"
+    - set_fact: rabbitmq_server_key="../compose/ssl/rabbitmq_server_key.pem"
+    - set_fact: redis_server_key="../compose/ssl/redis_server_key.pem"
+    - set_fact: jupyter_server_key="../compose/ssl/jupyter_server_key.pem"
+    - set_fact: rabbitmq_server_csr="../compose/ssl/rabbitmq_server.csr"
+    - set_fact: redis_server_csr="../compose/ssl/redis_server.csr"
+    - set_fact: jupyter_server_csr="../compose/ssl/jupyter_server.csr"
+    - set_fact: rabbitmq_server_cert="../compose/ssl/rabbitmq_server_cert.pem"
+    - set_fact: redis_server_cert="../compose/ssl/redis_server_cert.pem"
+    - set_fact: jupyter_server_cert="../compose/ssl/jupyter_server_cert.pem"
+    - set_fact: rabbitmq_server_cert="../compose/ssl/rabbitmq_server_cert.pem"
+    - set_fact: redis_server_cert="../compose/ssl/redis_server_cert.pem"
+    - set_fact: jupyter_server_cert="../compose/ssl/jupyter_server_cert.pem"
     - set_fact: client_key="../compose/ssl/client_key.pem"
-    - set_fact: client_csr="../compose/ssl/client_csr.pem"
+    - set_fact: client_csr="../compose/ssl/client.csr"
     - set_fact: client_cert="../compose/ssl/client_cert.pem"
     - set_fact: src_ca_srl="./configs/ssl/ca.srl"
     - set_fact: ca_private_key="../compose/ssl/ca_private_key.pem"
@@ -22,12 +31,21 @@
     - set_fact: org="SecureEverything"
     - set_fact: common_name="SecureEverything"
     - set_fact: fqdn="localdev.com"
+    - set_fact: rabbitmq_fqdn="rabbitmq.localdev.com"
+    - set_fact: redis_fqdn="redis.localdev.com"
+    - set_fact: jupyter_fqdn="jupyter.localdev.com"
     - set_fact: valid_days="365"
 
   tasks:
 
-    - name: Set Subject
+    - name: Set Default Subject
       set_fact: subject="/C={{country}}/ST={{state}}/L={{location}}/O={{org}}/CN={{fqdn}}"
+    - name: Set RabbitMQ Subject={{rabbitmq_fqdn}}
+      set_fact: rabbitmq_subject="/C={{country}}/ST={{state}}/L={{location}}/O={{org}}/CN={{rabbitmq_fqdn}}"
+    - name: Set Redis Subject={{redis_fqdn}}
+      set_fact: redis_subject="/C={{country}}/ST={{state}}/L={{location}}/O={{org}}/CN={{redis_fqdn}}"
+    - name: Set Jupyter Subject={{jupyter_fqdn}}
+      set_fact: jupyter_subject="/C={{country}}/ST={{state}}/L={{location}}/O={{org}}/CN={{jupyter_fqdn}}"
 
     - name: Installing base OpenSSL config and Extfile
       shell: cp {{src_openssl_config}} {{dst_openssl_config}} && \
@@ -45,37 +63,92 @@
         -sha256 \
         -out {{ca_file}}
 
-    - name: Create Server Key
+    - name: Create RabbitMQ Server Key
       command: openssl genrsa \
-        -out {{server_key}} 4096
+        -out {{rabbitmq_server_key}} 4096
 
-    - name: Create Server CSR -subj={{subject}}
+    - name: Create Redis Server Key
+      command: openssl genrsa \
+        -out {{redis_server_key}} 4096
+
+    - name: Create Jupyter Server Key
+      command: openssl genrsa \
+        -out {{jupyter_server_key}} 4096
+
+    - name: Create RabbitMQ Server CSR -subj={{rabbitmq_subject}}
       command: openssl req \
-        -subj "/CN={{fqdn}}" \
+        -subj {{rabbitmq_subject}} \
         -sha256 -new \
-        -key {{server_key}} \
-        -out {{server_csr}}
+        -key {{rabbitmq_server_key}} \
+        -out {{rabbitmq_server_csr}}
 
-    - name: Create Server CSR
+    - name: Create Redis Server CSR -subj={{redis_subject}}
       command: openssl req \
-        -subj "/CN={{fqdn}}" \
+        -subj {{redis_subject}} \
+        -sha256 -new \
+        -key {{redis_server_key}} \
+        -out {{redis_server_csr}}
+
+    - name: Create Jupyter Server CSR -subj={{jupyter_subject}}
+      command: openssl req \
+        -subj {{jupyter_subject}} \
+        -sha256 -new \
+        -key {{jupyter_server_key}} \
+        -out {{jupyter_server_csr}}
+
+    - name: Create RabbitMQ Server CSR
+      command: openssl req \
+        -subj {{rabbitmq_subject}} \
         -sha256 \
-        -new -key {{server_key}} \
-        -out {{server_csr}}
+        -new -key {{rabbitmq_server_key}} \
+        -out {{rabbitmq_server_csr}}
+
+    - name: Create Redis Server CSR
+      command: openssl req \
+        -subj {{redis_subject}} \
+        -sha256 \
+        -new -key {{redis_server_key}} \
+        -out {{redis_server_csr}}
+
+    - name: Create Jupyter Server CSR
+      command: openssl req \
+        -subj {{jupyter_subject}} \
+        -sha256 \
+        -new -key {{jupyter_server_key}} \
+        -out {{jupyter_server_csr}}
 
     - name: Installing Subject Alt Name and extendedKeyUsage
       command: echo "subjectAltName = DNS:{{fqdn}},IP:10.10.10.20,IP:127.0.0.1" > {{dst_ext_file}} \
         && echo "extendedKeyUsage = serverAuth" >> {{dst_ext_file}}
 
-    - name: Generate Signed Server Cert
+    - name: Generate RabbitMQ Signed Server Cert
       command: openssl x509 \
         -req \
         -days {{valid_days}} \
-        -sha256 -in {{server_csr}} \
+        -sha256 -in {{rabbitmq_server_csr}} \
         -CA {{ca_file}} \
         -CAkey {{ca_private_key}} \
-        -CAcreateserial -out {{server_cert}} \
+        -CAcreateserial -out {{rabbitmq_server_cert}} \
         -extfile {{dst_ext_file}}
+
+    - name: Generate Redis Signed Server Cert
+      command: openssl x509 \
+        -req \
+        -days {{valid_days}} \
+        -sha256 -in {{redis_server_csr}} \
+        -CA {{ca_file}} \
+        -CAkey {{ca_private_key}} \
+        -CAcreateserial -out {{redis_server_cert}} \
+        -extfile {{dst_ext_file}}
+
+    - name: Generate Jupyter Signed Server Cert
+      command: openssl x509 \
+        -req \
+        -days {{valid_days}} \
+        -sha256 -in {{jupyter_server_csr}} \
+        -CA {{ca_file}} \
+        -CAkey {{ca_private_key}} \
+        -CAcreateserial -out {{jupyter_server_cert}} 
 
     - name: Create Client Key
       command: openssl genrsa \
@@ -101,20 +174,39 @@
         -CAcreateserial -out {{client_cert}} \
         -extfile {{dst_ext_file}}
 
+    - name: Testing RabbitMQ Server Cert is a subdomain of fqdn={{fqdn}}
+      shell: openssl x509 -in {{rabbitmq_server_cert}} -text -noout | grep {{fqdn}} | wc -l
+      register: test_server_cert
+    
+    - name: Verifying RabbitMQ Server Cert
+      fail:
+        msg: "Please check the server cert={{rabbitmq_server_cert}} was created correctly {{fqdn}} count={{test_server_cert}}"
+      when: test_server_cert.stdout != "2"
+
+    - name: Testing Redis Server Cert is a subdomain of fqdn={{fqdn}}
+      shell: openssl x509 -in {{redis_server_cert}} -text -noout | grep {{fqdn}} | wc -l
+      register: test_server_cert
+    
+    - name: Verifying Redis Server Cert
+      fail:
+        msg: "Please check the server cert={{redis_server_cert}} was created correctly {{fqdn}} count={{test_server_cert}}"
+      when: test_server_cert.stdout != "2"
+
+    - name: Testing Jupyter Server Cert is a subdomain of fqdn={{fqdn}}
+      shell: openssl x509 -in {{jupyter_server_cert}} -text -noout | grep {{fqdn}} | wc -l
+      register: test_server_cert
+
+    - name: Verifying Jupyter Server Cert
+      fail:
+        msg: "Please check the server cert={{jupyter_server_cert}} was created correctly {{fqdn}} count={{test_server_cert}}"
+      when: test_server_cert.stdout != "1"
+
     - name: Testing Client Cert
       shell: openssl x509 -in {{client_cert}} -text -noout | grep {{fqdn}} | wc -l
       register: test_client_cert
     
-    - name: Testing Server Cert
-      shell: openssl x509 -in {{server_cert}} -text -noout | grep {{fqdn}} | wc -l
-      register: test_server_cert
-
     - name: Verifying Client Cert
       fail:
         msg: "Please check the client cert={{client_cert}} was created correctly {{fqdn}} count={{test_client_cert}}"
-      when: test_client_cert.stdout != "2"
+      when: test_client_cert.stdout != "1"
     
-    - name: Verifying Server Cert
-      fail:
-        msg: "Please check the server cert={{server_cert}} was created correctly {{fqdn}} count={{test_server_cert}}"
-      when: test_server_cert.stdout != "3"
