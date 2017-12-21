@@ -2252,7 +2252,7 @@ Running JupyterHub with Postgres and SSL
 
     https://jupyter.localdev.com/user/admin/tree/work/data-science-ipython-notebooks
     
-    .. image:: https://github.com/jay-johnson/celery-connectors/blob/master/_images/jupyterhub-step-3-browse-ipython-notebooks
+    .. image:: https://github.com/jay-johnson/celery-connectors/blob/master/_images/jupyterhub-step-3-browse-ipython-notebooks.png
         :align: center
 
 #.  Open the one of the cloned notebooks
@@ -2300,7 +2300,7 @@ Running JupyterHub with Postgres and SSL
 
     https://jupyter.localdev.com/user/admin/tree/work/data-science-ipython-notebooks/scikit-learn
 
-    .. image:: https://github.com/jay-johnson/celery-connectors/blob/master/_images/jupyterhub-step-7-jupyterhub-user-notebook-persistence
+    .. image:: https://github.com/jay-johnson/celery-connectors/blob/master/_images/jupyterhub-step-7-jupyterhub-user-notebook-persistence.png
         :align: center
 
 Linting
