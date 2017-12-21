@@ -2156,7 +2156,15 @@ If you have openssl installed you can use this ansible playbook to create your o
 Running JupyterHub with Postgres and SSL
 ----------------------------------------
 
-#.  Append the following entry to your ``/etc/hosts`` row with ``127.0.0.1``
+#.  Pull the default Jupyter image
+
+    All users will share this large 4.4 gb image
+
+    ::
+
+        docker pull jupyter/scipy-notebook:latest
+
+#.  Append the following entries to your ``/etc/hosts`` row with ``127.0.0.1``
         
     ``jupyter.localdev.com rabbitmq.localdev.com redis.localdev.com``
 
@@ -2173,6 +2181,30 @@ Running JupyterHub with Postgres and SSL
 
         cd compose
 
+#.  Create the JupyterHub docker network
+
+    This should only be required if the ``jupyterhub-network`` does not already exist.
+
+    ::
+
+        docker network create jupyterhub-network
+
+#.  Create the JupyterHub docker data volume
+
+    This should only be required if the ``jupyterhub-data`` does not already exist.
+
+    ::
+
+        docker volume create --name jupyterhub-data
+
+    Each user will need a data volume if they are not already created as well with naming scheme:
+
+    ``jupyterhub-user-<username>`` to persist notebooks.
+
+    ::
+
+        docker volume create --name jupyterhub-user-admin
+
 #.  Start JupyterHub
 
     ::
@@ -2186,28 +2218,90 @@ Running JupyterHub with Postgres and SSL
     - username: ``admin``
     - password: ``admin``
 
-    Please accept to "Proceed" past the self-signed certificate warning.
+    Please accept to "Proceed" passed the self-signed certificate warning.
 
     https://jupyter.localdev.com/hub/login
+    
+    .. image:: https://github.com/jay-johnson/celery-connectors/blob/master/_images/jupyterhub-step-1-login-as-admin-admin.png
+        :align: center
 
-    Ignore the server status error and continue to the admin page:
+#.  Start the Admin user Jupyter instance
+
+    Click on **Start My Server**
+    
+    .. image:: https://github.com/jay-johnson/celery-connectors/blob/master/_images/jupyterhub-step-2-start-server.png
+        :align: center
+
+#.  Clone some great notebooks into the Admin Jupyter workspace
+
+    From a terminal with access to ``docker`` clone a repository with some amazing ipython notebooks:
+
+    https://github.com/donnemartin/data-science-ipython-notebooks
+
+    ::
+
+        docker exec -it jupyter-admin git clone https://github.com/donnemartin/data-science-ipython-notebooks.git /home/jovyan/work/data-science-ipython-notebooks
+        Cloning into '/home/jovyan/work/data-science-ipython-notebooks'...
+        remote: Counting objects: 2344, done.
+        remote: Total 2344 (delta 0), reused 0 (delta 0), pack-reused 2344
+        Receiving objects: 100% (2344/2344), 47.76 MiB | 16.95 MiB/s, done.
+        Resolving deltas: 100% (1317/1317), done.
+        Checking connectivity... done.
+
+#.  Browse the cloned notebooks
+
+    https://jupyter.localdev.com/user/admin/tree/work/data-science-ipython-notebooks
+    
+    .. image:: https://github.com/jay-johnson/celery-connectors/blob/master/_images/jupyterhub-step-3-browse-ipython-notebooks
+        :align: center
+
+#.  Open the one of the cloned notebooks
+
+    https://jupyter.localdev.com/user/admin/notebooks/work/data-science-ipython-notebooks/scikit-learn/scikit-learn-intro.ipynb
+    
+#.  Select Kernel -> Restart & Run All
+
+    Confirm you can run all the cells in the notebook
+
+#.  Verify the notebook ran all the cells without any errors
+
+    Save the output and changes to the notebook with ``ctrl + s``. At the bottom of the notebook you should see the updated chart for the ``sepal width`` and ``sepal-length`` similar to:
+
+    .. image:: https://github.com/jay-johnson/celery-connectors/blob/master/_images/jupyterhub-step-4-run-all-notebook-cells.png
+        :align: center
+
+#.  Verify the notebook was changed and updated
+
+    Browse to:
+
+    https://jupyter.localdev.com/user/admin/tree/work/data-science-ipython-notebooks/scikit-learn
+
+    The ``scikit-learn-intro.ipynb`` should be running and updated.
+
+    .. image:: https://github.com/jay-johnson/celery-connectors/blob/master/_images/jupyterhub-step-5-confirm-notebook-was-saved.png
+        :align: center
+
+#.  Stop the Admin Jupyter instance
+
+    The notebooks should persist a stop and start of a user's Jupyter container instance.
 
     https://jupyter.localdev.com/hub/admin
 
     It should look something like this:
 
-.. image:: https://github.com/jay-johnson/celery-connectors/blob/master/_images/runnning-jupyter-hub-with-ssl.png
-    :align: center
+    .. image:: https://github.com/jay-johnson/celery-connectors/blob/master/_images/jupyterhub-step-6-stop-server.png
+        :align: center
 
-#.  TODO
+#.  Start the Admin Jupyter instance again
 
-    Fix server spawn error on user login... looks like the image is wrong in my compose file
+    Click ``start server``
 
-    ::
+#.  Browse to the ``scikit-learn`` directory and confirm the files were not lost on the restart
 
-        jupyterhub  | [I 2017-12-20 08:50:28.636 JupyterHub dockerspawner:452] Container 'jupyter-admin' is gone
-        jupyterhub  | [E 2017-12-20 08:50:28.642 JupyterHub user:427] Unhandled error starting admin's server: 404 Client Error: Not Found ("No such image: nbgallery/jupyter-alpine")
-        jupyterhub  | [I 2017-12-20 08:50:28.646 JupyterHub dockerspawner:452] Container 'jupyter-admin' is gone
+    https://jupyter.localdev.com/user/admin/tree/work/data-science-ipython-notebooks/scikit-learn
+
+    .. image:: https://github.com/jay-johnson/celery-connectors/blob/master/_images/jupyterhub-step-7-jupyterhub-user-notebook-persistence
+        :align: center
 
 Linting
 -------

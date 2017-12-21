@@ -36,19 +36,19 @@ services:
       # Bind Docker volume on host for JupyterHub database and cookie secrets
       - ./data/jupyter:/data
       - ./data/common:/data/common
-      - ./data/notebooks:/data/notebooks
+      - ./data/notebooks:/home/jovyan/work
       - ./ssl:/ssl
       - ./files:/files
     ports:
       - "443:443"
-      - "8081:8081"
+      - "8080:8080"
     environment:
       USERLIST_FILE: /files/jupyter_userlist
-      DOCKER_NOTEBOOK_DIR: /data/notebooks
+      DOCKER_NOTEBOOK_DIR: /home/jovyan/work
       # All containers will join this network
-      DOCKER_NETWORK_NAME: default
+      DOCKER_NETWORK_NAME: jupyterhub-network
       # JupyterHub will spawn this Notebook image for users
-      DOCKER_NOTEBOOK_IMAGE: jupyter-admin
+      DOCKER_NOTEBOOK_IMAGE: jupyter/scipy-notebook
       # Notebook directory inside user image
       # DOCKER_NOTEBOOK_DIR: ${DOCKER_NOTEBOOK_DIR}
       # Using this run command (optional)
@@ -62,3 +62,13 @@ services:
       - ./env/postgres-dev.env
       - ./env/oauth.env
     entrypoint: "/files/start-jupyter.sh"
+
+volumes:
+  data:
+    external:
+      name: jupyterhub-data
+
+networks:
+  default:
+    external:
+      name: jupyterhub-network
