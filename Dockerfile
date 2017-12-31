@@ -8,6 +8,7 @@ RUN apk add --update \
     curl \
     curl-dev \
     bash \
+    libffi-dev \
     net-tools \
     heimdal-telnet \
     openssl \
