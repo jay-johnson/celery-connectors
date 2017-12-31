@@ -68,7 +68,6 @@ xterm*|rxvt*)
     ;;
 esac
 
-alias grep='grep --color -ri'
 alias gs='git status'
 alias gl='git log'
 alias gd='git diff'
