@@ -2208,7 +2208,7 @@ If you have openssl installed you can use this ansible playbook to create your o
         subjectAltName         = DNS:*.localdev.com, DNS:redis.localdev.com, DNS:rabbitmq.localdev.com, DNS:jupyter.localdev.com, DNS:jenkins.localdev.com, DNS:www.localdev.com, DNS:api.localdev.com, DNS:db.localdev.com, DNS:pgadmin.localdev.com, DNS:phpmyadmin.localdev.com, DNS:kibana.localdev.com, DNS:lb.localdev.com, DNS:docker.localdev.com, email:admin@localdev.com
         issuerAltName          = issuer:copy
 
-    I found this link helpful for unstanding all the different configurable options:
+    I found this link helpful for understanding all the different configurable options:
     https://www.ibm.com/support/knowledgecenter/en/SSB23S_1.1.0.13/gtps7/cfgcert.html
 
 Running JupyterHub with Postgres and SSL
