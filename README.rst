@@ -2110,17 +2110,44 @@ If you have openssl installed you can use this ansible playbook to create your o
         ├── client_cert.pem
         ├── client.csr
         ├── client_key.pem
+        ├── database_server_cert.pem
+        ├── database_server.csr
+        ├── database_server_key.pem
+        ├── docker_server_cert.pem
+        ├── docker_server.csr
+        ├── docker_server_key.pem
         ├── extfile.cnf
+        ├── jenkins_server_cert.pem
+        ├── jenkins_server.csr
+        ├── jenkins_server_key.pem
         ├── jupyter_server_cert.pem
         ├── jupyter_server.csr
         ├── jupyter_server_key.pem
-        ├── openssl.cnf
+        ├── kibana_server_cert.pem
+        ├── kibana_server.csr
+        ├── kibana_server_key.pem
+        ├── nginx_server_cert.pem
+        ├── nginx_server.csr
+        ├── nginx_server_key.pem
+        ├── pgadmin_server_cert.pem
+        ├── pgadmin_server.csr
+        ├── pgadmin_server_key.pem
+        ├── phpmyadmin_server_cert.pem
+        ├── phpmyadmin_server.csr
+        ├── phpmyadmin_server_key.pem
         ├── rabbitmq_server_cert.pem
         ├── rabbitmq_server.csr
         ├── rabbitmq_server_key.pem
         ├── redis_server_cert.pem
         ├── redis_server.csr
-        └── redis_server_key.pem
+        ├── redis_server_key.pem
+        ├── restapi_server_cert.pem
+        ├── restapi_server.csr
+        ├── restapi_server_key.pem
+        ├── webserver_server_cert.pem
+        ├── webserver_server.csr
+        └── webserver_server_key.pem
+
 
 #.  Set up your own extfile.cnf - Optional
 
@@ -2129,13 +2156,13 @@ If you have openssl installed you can use this ansible playbook to create your o
     ::
 
         cat ./configs/extfile.cnf 
-        subjectAltName = DNS:localdev.com,IP:10.10.10.20,IP:127.0.0.1
+        subjectAltName = DNS:*.localdev.com, DNS:rabbitmq.localdev.com, DNS:redis.localdev.com, DNS:jupyter.localdev.com, DNS:jenkins.localdev.com, DNS:www.localdev.com, DNS:api.localdev.com, DNS:db.localdev.com, DNS:pgadmin.localdev.com, DNS:phpmyadmin.localdev.com, DNS:kibana.localdev.com, DNS:lb.localdev.com, DNS:docker.localdev.com, IP:127.0.0.1
         extendedKeyUsage = serverAuth
-        extendedKeyUsage = clientAuth
 
-#.  Set up your own openssl.cnf - Optional
 
-    You can change the source ``openssl.cnf`` which is copied over to the ``compose/ssl`` directory when the playbook runs as needed.
+#.  Customizing your own openssl.cnf and cert_openssl.cnf - Optional
+
+    You can change the source ``openssl.cnf`` before creating the certs.
 
     ::
 
@@ -2149,9 +2176,40 @@ If you have openssl installed you can use this ansible playbook to create your o
         C  = US
         ST = WA
         L  = Redmond
-        O  = Secure Everything
-        OU = Security Systems
+        O  = SecureEverything
+        OU = SecureEverythingOrgUnit
         CN = LocalDev
+
+    You can change the source ``cert_openssl.cnf`` before creating the certs.
+
+    ::
+
+        cat ./configs/cert_openssl.cnf 
+        [req]
+        days                   = 2000
+        serial                 = 1
+        distinguished_name     = req_distinguished_name
+        x509_extensions        = v3_ca
+
+
+        [req_distinguished_name]
+        countryName            = US
+        stateOrProvinceName    = WA
+        localityName           = Redmond
+        organizationName       = SecureEverything
+        organizationalUnitName = SecureEverythingOrgUnit
+        commonName             = SecureEverything
+
+        [ v3_ca ]
+        subjectKeyIdentifier   = hash
+        authorityKeyIdentifier = keyid:always,issuer:always
+        basicConstraints       = CA:TRUE
+        keyUsage               = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment, keyAgreement, keyCertSign
+        subjectAltName         = DNS:*.localdev.com, DNS:redis.localdev.com, DNS:rabbitmq.localdev.com, DNS:jupyter.localdev.com, DNS:jenkins.localdev.com, DNS:www.localdev.com, DNS:api.localdev.com, DNS:db.localdev.com, DNS:pgadmin.localdev.com, DNS:phpmyadmin.localdev.com, DNS:kibana.localdev.com, DNS:lb.localdev.com, DNS:docker.localdev.com, email:admin@localdev.com
+        issuerAltName          = issuer:copy
+
+    I found this link helpful for unstanding all the different configurable options:
+    https://www.ibm.com/support/knowledgecenter/en/SSB23S_1.1.0.13/gtps7/cfgcert.html
 
 Running JupyterHub with Postgres and SSL
 ----------------------------------------
@@ -2166,14 +2224,14 @@ Running JupyterHub with Postgres and SSL
 
 #.  Append the following entries to your ``/etc/hosts`` row with ``127.0.0.1``
         
-    ``jupyter.localdev.com rabbitmq.localdev.com redis.localdev.com``
+    ``jupyter.localdev.com rabbitmq.localdev.com redis.localdev.com jenkins.localdev.com``
 
 #.  Verify ``/etc/hosts`` has the entries
 
     ::
 
         cat /etc/hosts | grep localdev
-        127.0.0.1      localhost localhost.localdomain localhost4 localhost4.localdomain4 jupyter.localdev.com rabbitmq.localdev.com redis.localdev.com
+        127.0.0.1      localhost localhost.localdomain localhost4 localhost4.localdomain4 jupyter.localdev.com rabbitmq.localdev.com redis.localdev.com jenkins.localdev.com
 
 #.  From the base repository directory, change to the ``compose`` directory
 
