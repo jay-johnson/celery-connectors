@@ -57,6 +57,8 @@ How do I get started?
 
     ::
 
+        # if you do not have docker compose installed, you can try installing it with:
+        # pip install docker-compose
         start-redis-and-rabbitmq.sh
 
     Or if your docker version and OS support container volume-mounting, then you can persist Redis and RabbitMQ messages and data to disk with:
