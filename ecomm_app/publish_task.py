@@ -1,17 +1,15 @@
 #!/usr/bin/env python
 
-import logging
 import uuid
 from datetime import datetime
-from celery_connectors.log.setup_logging import setup_logging
+from spylunking.log.setup_logging import build_colorized_logger
 from celery_connectors.utils import ev
 import ecommerce.tasks
 
-setup_logging()
 
 name = "celery-task-publisher"
-
-log = logging.getLogger(name)
+log = build_colorized_logger(
+    name=name)
 
 pub_auth_url = ev("PUB_BROKER_URL",
                   "amqp://rabbitmq:rabbitmq@localhost:5672//")

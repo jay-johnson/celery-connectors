@@ -1,21 +1,19 @@
 #!/usr/bin/env python
 
-import logging
 import uuid
 import time
 from datetime import datetime
+from spylunking.log.setup_logging import build_colorized_logger
 from celery_connectors.utils import ev
-from celery_connectors.log.setup_logging import setup_logging
 from celery_connectors.message_processor import MessageProcessor
 
 # import the ecommerce tasks out of the demo dir
 import ecomm_app.ecommerce.tasks
 
-setup_logging()
 
 name = "ecomm-relay"
-
-log = logging.getLogger("ecomm-relay-loader")
+log = build_colorized_logger(
+    name=name)
 
 log.info("Start - {}".format(name))
 

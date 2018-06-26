@@ -1,10 +1,10 @@
-import logging
+from spylunking.log.setup_logging import test_logger
 from celery_connectors.utils import get_percent_done
-from celery_connectors.log.setup_logging import setup_logging
 from tests.base_test import BaseTestCase
 
-setup_logging()
-log = logging.getLogger("consume-many")
+
+log = test_logger(
+    name='consume-many')
 
 
 class TestConsumeLargeNumberOfMessages(BaseTestCase):

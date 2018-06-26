@@ -1,9 +1,9 @@
-import logging
 import time
 from kombu import Connection, Queue, Exchange
 from kombu.common import maybe_declare
 from kombu.mixins import ConsumerProducerMixin
 from kombu.pools import producers
+from spylunking.log.setup_logging import build_colorized_logger
 from celery_connectors.utils import SUCCESS
 from celery_connectors.utils import FAILED
 from celery_connectors.utils import ERROR
@@ -11,7 +11,6 @@ from celery_connectors.utils import ev
 from celery_connectors.utils import build_sample_msgs
 from celery_connectors.utils import calc_backoff_timer
 from celery_connectors.build_ssl_options import build_ssl_options
-from celery_connectors.log.setup_logging import setup_logging
 
 
 # Credits and inspirations from these great sources:
@@ -22,9 +21,9 @@ from celery_connectors.log.setup_logging import setup_logging
 # https://github.com/Skablam/kombu-examples
 # https://gist.github.com/mlavin/6671079
 
-setup_logging()
 name = ev("APP_NAME", "robopubsub")
-log = logging.getLogger(name)
+log = build_colorized_logger(
+    name=name)
 
 
 broker_url = ev("PUB_BROKER_URL", "pyamqp://rabbitmq:rabbitmq@localhost:5672//")

@@ -2,8 +2,7 @@
 
 import os
 import uuid
-import logging
-from celery_connectors.log.setup_logging import setup_logging
+from spylunking.log.setup_logging import build_colorized_logger
 from celery_connectors.redis.redis_json_application import RedisJSONApplication
 
 port = 6379
@@ -14,9 +13,8 @@ redis_pw = os.getenv("ENV_REDIS_PASSWORD", "")
 queue_name = os.getenv("Q_1", "reporting.accounts").strip().lstrip()
 name = "redis-producer"
 
-setup_logging()
-
-log = logging.getLogger(__file__)
+log = build_colorized_logger(
+    name='redis-publish')
 
 log.info("START - {} - Sending messages to redis={}:{}/{} queue={}".format(name,
                                                                            host,

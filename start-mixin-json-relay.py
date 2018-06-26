@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 
-import logging
 from kombu import Exchange, Queue
+from spylunking.log.setup_logging import build_colorized_logger
 from celery_connectors.utils import ev
 from celery_connectors.build_ssl_options import build_ssl_options
-from celery_connectors.log.setup_logging import setup_logging
 from celery_connectors.run_consumer_relay import run_consumer_relay
 
 
@@ -16,9 +15,9 @@ from celery_connectors.run_consumer_relay import run_consumer_relay
 # https://github.com/Skablam/kombu-examples
 # https://gist.github.com/mlavin/6671079
 
-setup_logging()
 name = ev("APP_NAME", "mixin_relay")
-log = logging.getLogger(name)
+log = build_colorized_logger(
+    name=name)
 
 
 broker_url = ev("SUB_BROKER_URL", "pyamqp://rabbitmq:rabbitmq@localhost:5672//")

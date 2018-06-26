@@ -1,17 +1,15 @@
 #!/usr/bin/env python
 
-import logging
+from spylunking.log.setup_logging import build_colorized_logger
 from celery import Celery
 from celery_connectors.utils import ev
 from celery_connectors.utils import get_source_info_from_msg
-from celery_connectors.log.setup_logging import setup_logging
 from celery_connectors.subscriber import Subscriber
 
-setup_logging()
 
 name = "run-rabbitmq-subscriber"
-
-log = logging.getLogger(name)
+log = build_colorized_logger(
+    name=name)
 
 log.info("Start - {}".format(name))
 

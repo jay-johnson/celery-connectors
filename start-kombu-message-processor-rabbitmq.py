@@ -1,15 +1,13 @@
 #!/usr/bin/env python
 
-import logging
+from spylunking.log.setup_logging import build_colorized_logger
 from celery_connectors.utils import ev
-from celery_connectors.log.setup_logging import setup_logging
 from celery_connectors.message_processor import MessageProcessor
 
-setup_logging()
 
 name = "msg-proc"
-
-log = logging.getLogger("loader-name")
+log = build_colorized_logger(
+    name=name)
 
 log.info("Start - {}".format(name))
 

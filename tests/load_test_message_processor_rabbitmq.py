@@ -1,15 +1,14 @@
 import os
-import logging
 import datetime
 import uuid
-from celery_connectors.log.setup_logging import setup_logging
+from spylunking.log.setup_logging import test_logger
 from celery_connectors.utils import get_percent_done
 from celery_connectors.utils import ev
 from tests.base_test import BaseTestCase
 
-setup_logging()
 
-log = logging.getLogger("load-test-rabbit-subscriber")
+log = test_logger(
+    name="load-test-rabbit-subscriber")
 
 
 class LoadTestSubscriberRabbitMQConsuming(BaseTestCase):

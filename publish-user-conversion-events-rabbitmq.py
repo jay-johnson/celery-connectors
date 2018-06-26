@@ -1,16 +1,14 @@
 #!/usr/bin/env python
 
-import logging
 import datetime
+from spylunking.log.setup_logging import build_colorized_logger
 from celery_connectors.utils import ev
-from celery_connectors.log.setup_logging import setup_logging
 from celery_connectors.publisher import Publisher
 
-setup_logging()
 
 name = "publish-user-conversion-events"
-
-log = logging.getLogger(name)
+log = build_colorized_logger(
+    name=name)
 
 log.info("Start - {}".format(name))
 

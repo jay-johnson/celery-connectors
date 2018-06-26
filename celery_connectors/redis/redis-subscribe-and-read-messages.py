@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 
 import os
-import logging
-from celery_connectors.log.setup_logging import setup_logging
+from spylunking.log.setup_logging import build_colorized_logger
 from celery_connectors.redis.redis_json_application import RedisJSONApplication
 
 port = 6379
@@ -11,11 +10,10 @@ db = int(os.getenv("ENV_REDIS_DB_ID", 0))
 # if set to empty string use password=None
 redis_pw = os.getenv("ENV_REDIS_PASSWORD", "")
 queue_name = os.getenv("Q_1", "reporting.accounts").strip().lstrip()
+
 name = "redis-subscriber"
-
-setup_logging()
-
-log = logging.getLogger(__file__)
+log = build_colorized_logger(
+    name=name)
 
 log.info("START - {} - Sending messages to redis={}:{}/{} queue={}".format(name,
                                                                            host,
