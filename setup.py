@@ -13,6 +13,13 @@ try:
 except ImportError:
     from distutils.command.build_py import build_py
 
+"""
+https://packaging.python.org/guides/making-a-pypi-friendly-readme/
+check the README.rst works on pypi as the
+long_description with:
+twine check dist/*
+"""
+long_description = open('README.rst').read()
 
 cur_path, cur_script = os.path.split(sys.argv[0])
 os.chdir(os.path.abspath(cur_path))
@@ -55,18 +62,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "celery_connectors"))
 setup(
     name="celery-connectors",
     cmdclass={"build_py": build_py},
-    version="1.0.28",
+    version="1.0.29",
     description="Celery Connectors",
-    long_description="Messaging examples for Celery and Kombu. " +
-    "Multiple publisher-subscriber examples for processing json or " +
-    "pickled messages from Redis, RabbitMQ or AWS SQS. " +
-    "Includes Kombu message processors using native Producer and " +
-    "Consumer classes as well as ConsumerProducerMixin workers for relay " +
-    "publish-hook support to automate pub-sub or auto-caching. " +
-    "Also includes a docker compose file for RabbitMQ, Redis and Flower " +
-    "containers too. Functional AWS SQS publish and subscribe tooling. " +
-    "Also a dockerized JupyterHub with Postgres example with " +
-    "local user login over ssl.",
+    long_description=long_description,
     author="Jay Johnson",
     author_email="jay.p.h.johnson@gmail.com",
     url="https://github.com/jay-johnson/celery-connectors",

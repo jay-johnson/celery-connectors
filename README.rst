@@ -31,7 +31,7 @@ Why do I care?
 - Do you want something that works with python 2 and 3?
 
 How do I get started?
--------------------
+---------------------
 
 #.  Setup the virtualenv 
 
