@@ -9,7 +9,7 @@ Each example below can run as a docker container with the included docker-compos
 
 Here's the JSON-to-Celery ecomm relay example in action. By using docker-compose you can use container monitoring tools to benchmark resources and throughput to figure out your deployment footprint and address bottlenecks. 
 
-.. image:: https://github.com/jay-johnson/celery-connectors/blob/master/_images/celery-connectors-json-to-celery-relay-with-existing-ecomm-celery-app.gif
+.. image:: https://raw.githubusercontent.com/jay-johnson/celery-connectors/master/_images/celery-connectors-json-to-celery-relay-with-existing-ecomm-celery-app.gif
     :align: center
 
 .. _Celery: http://docs.celeryproject.org/en/latest/
@@ -576,7 +576,7 @@ You can also watch progress using the Flower Celery monitoring application that'
 
 Here's a snapshot of my 20,000 + 10 messages using the ``celery@ecommerce_subscriber`` Celery worker.
 
-.. image:: https://github.com/jay-johnson/celery-connectors/blob/master/_images/flower-jtoc-relay-results.png
+.. image:: https://raw.githubusercontent.com/jay-johnson/celery-connectors/master/_images/flower-jtoc-relay-results.png
     :align: center
 
 The ``Processed`` and ``Succeeded`` task counts for the ``celery@ecommerce_subscriber`` should increment each time a User Conversion Event is published by the ecomm relay to the ecomm worker.
@@ -2282,14 +2282,14 @@ Running JupyterHub with Postgres and SSL
 
     https://jupyter.localdev.com/hub/login
     
-    .. image:: https://github.com/jay-johnson/celery-connectors/blob/master/_images/jupyterhub-step-1-login-as-admin-admin.png
+    .. image:: https://raw.githubusercontent.com/jay-johnson/celery-connectors/master/_images/jupyterhub-step-1-login-as-admin-admin.png
         :align: center
 
 #.  Start the Admin user Jupyter instance
 
     Click on **Start My Server**
     
-    .. image:: https://github.com/jay-johnson/celery-connectors/blob/master/_images/jupyterhub-step-2-start-server.png
+    .. image:: https://raw.githubusercontent.com/jay-johnson/celery-connectors/master/_images/jupyterhub-step-2-start-server.png
         :align: center
 
 #.  Clone some great notebooks into the Admin Jupyter workspace
@@ -2312,7 +2312,7 @@ Running JupyterHub with Postgres and SSL
 
     https://jupyter.localdev.com/user/admin/tree/work/data-science-ipython-notebooks
     
-    .. image:: https://github.com/jay-johnson/celery-connectors/blob/master/_images/jupyterhub-step-3-browse-ipython-notebooks.png
+    .. image:: https://raw.githubusercontent.com/jay-johnson/celery-connectors/master/_images/jupyterhub-step-3-browse-ipython-notebooks.png
         :align: center
 
 #.  Open the one of the cloned notebooks
@@ -2327,7 +2327,7 @@ Running JupyterHub with Postgres and SSL
 
     Save the output and changes to the notebook with ``ctrl + s``. At the bottom of the notebook you should see the updated chart for the ``sepal width`` and ``sepal-length`` similar to:
 
-    .. image:: https://github.com/jay-johnson/celery-connectors/blob/master/_images/jupyterhub-step-4-run-all-notebook-cells.png
+    .. image:: https://raw.githubusercontent.com/jay-johnson/celery-connectors/master/_images/jupyterhub-step-4-run-all-notebook-cells.png
         :align: center
 
 #.  Verify the notebook was changed and updated
@@ -2338,7 +2338,7 @@ Running JupyterHub with Postgres and SSL
 
     The ``scikit-learn-intro.ipynb`` should be running and updated.
 
-    .. image:: https://github.com/jay-johnson/celery-connectors/blob/master/_images/jupyterhub-step-5-confirm-notebook-was-saved.png
+    .. image:: https://raw.githubusercontent.com/jay-johnson/celery-connectors/master/_images/jupyterhub-step-5-confirm-notebook-was-saved.png
         :align: center
 
 #.  Stop the Admin Jupyter instance
@@ -2349,7 +2349,7 @@ Running JupyterHub with Postgres and SSL
 
     It should look something like this:
 
-    .. image:: https://github.com/jay-johnson/celery-connectors/blob/master/_images/jupyterhub-step-6-stop-server.png
+    .. image:: https://raw.githubusercontent.com/jay-johnson/celery-connectors/master/_images/jupyterhub-step-6-stop-server.png
         :align: center
 
 #.  Start the Admin Jupyter instance again
@@ -2360,7 +2360,7 @@ Running JupyterHub with Postgres and SSL
 
     https://jupyter.localdev.com/user/admin/tree/work/data-science-ipython-notebooks/scikit-learn
 
-    .. image:: https://github.com/jay-johnson/celery-connectors/blob/master/_images/jupyterhub-step-7-jupyterhub-user-notebook-persistence.png
+    .. image:: https://raw.githubusercontent.com/jay-johnson/celery-connectors/master/_images/jupyterhub-step-7-jupyterhub-user-notebook-persistence.png
         :align: center
 
 Linting
